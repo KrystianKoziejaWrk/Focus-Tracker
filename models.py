@@ -12,6 +12,7 @@ class Users(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=True)
     timezone = db.Column(db.String(50), default="UTC")
+    
 
     # Relationship with focus sessions
     sessions = db.relationship("FocusSession", back_populates="user", cascade="all, delete-orphan")
