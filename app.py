@@ -20,6 +20,17 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+
+@app.route("/")
+def home():
+    render_template("base.html")
+
+
+'''
+All of this is the user authentication
+so we got the google and default logins
+'''
+
 #Creating the approutes for logging in and logging out
 @app.route("/signup", methods=["POST","GET"])
 def signup():
@@ -37,7 +48,6 @@ def signup():
         session["user_password"] = user_email
 
         
-
 
 
 
