@@ -6,10 +6,11 @@ from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 
 from models import db, Users, FocusSession
-
-#New imports
 from flask_jwt_extended import JWTManager
 from routes import auth
+
+
+
 
 app = Flask(__name__)
 

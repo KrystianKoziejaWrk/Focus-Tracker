@@ -30,7 +30,6 @@ google_auth = OAuth2Session(GOOGLE_CLIENT_ID,
     scope=["openid", "email", "profile"],)
 
 
-
 #homepage render
 @auth.route("/")
 def homepage():
