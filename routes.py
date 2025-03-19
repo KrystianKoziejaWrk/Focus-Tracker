@@ -6,6 +6,7 @@ from google.oauth2 import id_token
 from models import db, Users, FocusSession
 from datetime import datetime, timedelta
 import pytz
+import json
 
 import json
 from requests_oauthlib import OAuth2Session
@@ -15,9 +16,12 @@ auth = Blueprint("auth", __name__)
 
 
 #loading google credentials form a file
-GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"
-GOOGLE_CLIENT_SECRET = "YOUR_GOOGLE_CLIENT_SECRET"
-GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+with open("client_secret.json") as f:
+    google_creds = json.load(f)
+
+GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
+GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
+REDIRECT_URI = google_creds["web"]["redirect_uris"][0]
 
 
 #OAuth config
@@ -28,12 +32,12 @@ google_auth = OAuth2Session(GOOGLE_CLIENT_ID,
 
 
 #homepage render
-@auth.routs("/")
+@auth.route("/")
 def homepage():
     return render_template("homepage.html")
 
-@auth.routs("/dashbaord")
-@jwt_required
+@auth.route("/dashbaord")
+@jwt_required()
 def dashboard():
     user_id = get_jwt_identity()
     user = Users.query.get(user_id)
@@ -55,7 +59,7 @@ def register():
         user_check = Users.query.filter_by(email=email).first()
         if user_check:
             flash("User already exists!")
-            return redirect(url_for("registerpage"))
+            return redirect(url_for("auth.register"))
         
         #hash the password
         hashed_password = generate_password_hash(password)
@@ -98,6 +102,7 @@ def login():
 
 
 #Super Cool Google login page
+@auth.route("/google-login")
 def google_login():
     #Redirect to the cool google login page
     authorization_url, state = google_auth.authorization_url(
@@ -106,6 +111,7 @@ def google_login():
         prompt="consent",
     )
     session["oauth_state"] = state
+    
     return redirect(authorization_url)
 
 #Then when they sign up we got to send them back
@@ -122,10 +128,10 @@ def google_callback():
         #Get the user information
         user_info = google_auth.get("https://www.googleapis.com/oauth2/v3/userinfo").json()
 
-        google_id = user_info["sub"]
         email = user_info["email"]
         username = user_info["name"]
 
+        
         #See if the user already exists in the database
         user = Users.query.filter_by(email = email).first()
         if not user:
@@ -142,7 +148,7 @@ def google_callback():
         session["jwt_token"] = access_token
 
         flash("Login successful with Google!")
-        return redirect(url_for("auth.dashbaord"))
+        return redirect(url_for("auth.dashboard"))
     except Exception as e:
         flash(f"Google login failed: {str(e)}", "danger")
         return redirect(url_for("auth.login"))
