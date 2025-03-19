@@ -1,0 +1,28 @@
+import requests
+
+# Flask API endpoint (Update this with your actual deployed backend URL)
+FLASK_API_URL = "http://127.0.0.1:5000/auth/add_session"
+
+def send_focus_data(duration, jwt_token):
+    """
+    Sends the focus session data to the backend API.
+
+    Parameters:
+        duration (int): Duration of the focus session in minutes.
+        jwt_token (str): JWT authentication token for the user.
+
+    Returns:
+        dict: API response.
+    """
+    headers = {
+        "Authorization": f"Bearer {jwt_token}", 
+        "Content-Type": "application/json"
+    }
+    
+    payload = {"duration": duration}
+
+    try:
+        response = requests.post(FLASK_API_URL, json=payload, headers=headers)
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
