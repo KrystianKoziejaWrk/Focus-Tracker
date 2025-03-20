@@ -2,13 +2,13 @@ from flask import Flask, jsonify, request, send_from_directory, render_template,
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 # Google auth
+
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 
-from models import db, Users, FocusSession
+from flask_backend.models import db, Users, FocusSession
 from flask_jwt_extended import JWTManager
-from routes import auth
-
+from flask_backend.routes import auth
 
 
 

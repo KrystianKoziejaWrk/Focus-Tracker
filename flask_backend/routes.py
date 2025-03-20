@@ -3,20 +3,28 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from google.auth.transport import requests
 from google.oauth2 import id_token
-from models import db, Users, FocusSession
+from flask_backend.models import db, Users, FocusSession
 from datetime import datetime, timedelta
 import pytz
 import json
 
-import json
 from requests_oauthlib import OAuth2Session
 
 
 auth = Blueprint("auth", __name__)
 
+#dashboard route
+@auth.route("/dashboard")
+@jwt_required()
+def dashboard():
+    user_id = get_jwt_identity()    
+    user = Users.query.get(user_id)
+    sessions = FocusSession.query.filter_by(user_id=user_id).all()
+
+    return render_template("dashboard.html", sessions=sessions, user= user)
 
 #loading google credentials form a file
-with open("client_secret.json") as f:
+with open("flask_backend/client_secret.json", "r") as f:
     google_creds = json.load(f)
 
 GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
@@ -34,15 +42,6 @@ google_auth = OAuth2Session(GOOGLE_CLIENT_ID,
 @auth.route("/")
 def homepage():
     return render_template("homepage.html")
-
-@auth.route("/dashbaord")
-@jwt_required()
-def dashboard():
-    user_id = get_jwt_identity()
-    user = Users.query.get(user_id)
-
-    return render_template("dashbarod.html", username=user.username, timezone=user.timezone)
-
 
 
 #Register account
