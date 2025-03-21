@@ -136,13 +136,14 @@ def login():
 #Super Cool Google login page
 @auth.route("/google-login")
 def google_login():
-    # Redirect to the cool google login page
+    source = request.args.get("source", "web")
     authorization_url, state = google_auth.authorization_url(
         "https://accounts.google.com/o/oauth2/auth",
         access_type="offline",
         prompt="consent",
     )
     session["oauth_state"] = state
+    session["login_source"] = source
     print("DEBUG: Authorization URL =>", authorization_url)
     return redirect(authorization_url)
 
@@ -157,11 +158,11 @@ def google_callback():
             client_secret=GOOGLE_CLIENT_SECRET,
             authorization_response=request.url,
         )
-        print("DEBUG: Token =>", token)  # Add this line for debugging
+        print("DEBUG: Token =>", token)
 
         # Get the user information
         user_info = google_auth.get("https://www.googleapis.com/oauth2/v3/userinfo").json()
-        print("DEBUG: User Info =>", user_info)  # Add this line for debugging
+        print("DEBUG: User Info =>", user_info)
 
         email = user_info["email"]
         username = user_info["name"]
@@ -173,23 +174,27 @@ def google_callback():
             user = Users(username=username, email=email)
             db.session.add(user)
             db.session.commit()
-            print("DEBUG: New user created =>", user)  # Add this line for debugging
+            print("DEBUG: New user created =>", user)
 
-        # Create a jwt token
+        # Create a JWT token
         access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
-        print("DEBUG: Access Token =>", access_token)  # Add this line for debugging
+        print("DEBUG: Access Token =>", access_token)
 
-        # Store the jwt token in a cookie
-        response = make_response(redirect(url_for("auth.dashboard")))
-        set_access_cookies(response, access_token)
-        print("DEBUG: JWT Token stored in cookie")  # Add this line for debugging
-
-        flash("Login successful with Google!")
-        return response
+        # Check the source of the login request
+        source = session.get("login_source", "web")
+        if source == "pyqt":
+            # Redirect to the local server running in the PyQt application with the JWT token as a URL parameter
+            return redirect(f"http://127.0.0.1:8000/callback?access_token={access_token}")
+        else:
+            # Store the JWT token in a cookie and redirect to the dashboard for web
+            response = make_response(redirect(url_for("auth.dashboard")))
+            set_access_cookies(response, access_token)
+            print("DEBUG: JWT Token stored in cookie")
+            flash("Login successful with Google!")
+            return response
     except Exception as e:
         print("DEBUG: Google login failed =>", e)
-        flash(f"Google login failed: {str(e)}", "danger")
-        return redirect(url_for("auth.login"))
+        return jsonify({"msg": f"Google login failed: {str(e)}"}), 401
 
 @auth.route("/logout")
 def logout():

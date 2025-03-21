@@ -6,11 +6,16 @@ import keyboard
 import requests
 import json
 import webbrowser
+from PyQt6.QtCore import QUrl, QEventLoop, QTimer, QThread, pyqtSignal
+from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 
 from api_handler import send_focus_data
 
 FLASK_API_URL = "http://127.0.0.1:5000/login"
-GOOGLE_LOGIN_URL = "http://127.0.0.1:5000/google-login"
+GOOGLE_LOGIN_URL = "http://127.0.0.1:5000/google-login?source=pyqt"
+GOOGLE_CALLBACK_URL = "http://127.0.0.1:5000/google/callback"
 
 def save_token(token):
     with open("token.json", "w") as f:
@@ -29,6 +34,8 @@ def clear_token():
         json.dump({"jwt_token": ""}, f)
 
 class LoginWindow(QMainWindow):
+    token_received = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
 
@@ -67,6 +74,8 @@ class LoginWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
+        self.token_received.connect(self.handle_token_received)
+
     def login(self):
         email = self.email_input.text()
         password = self.password_input.text()
@@ -88,10 +97,52 @@ class LoginWindow(QMainWindow):
 
     def google_login(self):
         webbrowser.open(GOOGLE_LOGIN_URL)
+        self.start_local_server()
+
+    def start_local_server(self):
+        self.server_thread = threading.Thread(target=self.run_local_server)
+        self.server_thread.start()
+
+    def run_local_server(self):
+        server_address = ('', 8000)
+        httpd = HTTPServer(server_address, self.RequestHandler)
+        self.RequestHandler.app = self  # Pass the app instance to the handler
+        self.httpd = httpd
+        httpd.serve_forever()
+
+    class RequestHandler(BaseHTTPRequestHandler):
+        app = None
+
+        def do_GET(self):
+            if self.path.startswith("/callback"):
+                query = self.path.split("?")[1]
+                params = dict(qc.split("=") for qc in query.split("&"))
+                jwt_token = params.get("access_token")
+                if jwt_token:
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(b"Login successful! You can close this window.")
+                    self.server.jwt_token = jwt_token
+                    self.server.shutdown()
+                    self.app.token_received.emit(jwt_token)
+
+    def handle_token_received(self, jwt_token):
+        save_token(jwt_token)
+        self.status_label.setText("Login successful!")
+        print("DEBUG: Login successful, JWT token received")
+
+        self.close()
+        self.open_focus_tracker(jwt_token)
 
     def open_focus_tracker(self, jwt_token):
         self.focus_tracker = FocusTracker(jwt_token)
         self.focus_tracker.show()
+
+    def closeEvent(self, event):
+        if hasattr(self, 'httpd'):
+            self.httpd.shutdown()
+        event.accept()
 
 class FocusTracker(QMainWindow):
     def __init__(self, jwt_token):
