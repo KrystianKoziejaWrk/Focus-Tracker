@@ -100,26 +100,37 @@ def register():
 @auth.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email_input"]
-        password = request.form["password_input"]
+        if request.is_json:
+            data = request.get_json()
+            email = data.get("email")
+            password = data.get("password")
+            print(f"DEBUG: Received JSON login request with email: {email}")
+        else:
+            email = request.form["email_input"]
+            password = request.form["password_input"]
+            print(f"DEBUG: Received form login request with email: {email}")
 
-        user = Users.query.filter_by(email = email).first()
-        #if the user does not exist or the password input is not the same then we are going to redirect back to login
+        user = Users.query.filter_by(email=email).first()
         if not user or not check_password_hash(user.password, password):
-            flash("Invalid email or password")
-            return redirect(url_for("auth.login"))
-        
-        # Create the JWT token
+            print("DEBUG: Invalid email or password")
+            if request.is_json:
+                return jsonify({"msg": "Invalid email or password"}), 401
+            else:
+                flash("Invalid email or password")
+                return redirect(url_for("auth.login"))
+
         access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
 
-        # Store the JWT token in a cookie
-        response = make_response(redirect(url_for("auth.dashboard")))
-        set_access_cookies(response, access_token)
-        print("DEBUG: JWT Token stored in cookie")  # Add this line for debugging
+        if request.is_json:
+            print("DEBUG: Login successful, returning JSON response")
+            return jsonify({"access_token": access_token})
+        else:
+            response = make_response(redirect(url_for("auth.dashboard")))
+            set_access_cookies(response, access_token)
+            print("DEBUG: JWT Token stored in cookie")
+            flash("Login successful!")
+            return response
 
-        flash("Login successful!")
-        return response
-    
     return render_template("login.html")
 
 #Super Cool Google login page
@@ -198,12 +209,15 @@ def add_session():
     user_id = get_jwt_identity()
     data = request.json
     duration = data.get("duration")
+    print(f"DEBUG: Received focus session data with duration: {duration}")
+    print(f"DEBUG: User ID from JWT: {user_id}")
 
-    new_session = FocusSession(user_id = user_id, duration = duration)
+    new_session = FocusSession(user_id=user_id, duration=duration)
     db.session.add(new_session)
     db.session.commit()
-    
-    return jsonify({"message": "Focus session added!"}) , 201
+
+    print("DEBUG: Focus session added to the database")
+    return jsonify({"message": "Focus session added!"}), 201
 
 #getting the user sessions
 @auth.route("/get_sessions", methods=["GET"])

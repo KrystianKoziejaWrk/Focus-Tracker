@@ -1,7 +1,7 @@
 import requests
 
 # Flask API endpoint (Update this with your actual deployed backend URL)
-FLASK_API_URL = "http://127.0.0.1:5000/auth/add_session"
+FLASK_API_URL = "http://127.0.0.1:5000/add_session"
 
 def send_focus_data(duration, jwt_token):
     """
@@ -20,9 +20,13 @@ def send_focus_data(duration, jwt_token):
     }
     
     payload = {"duration": duration}
+    print(f"DEBUG: Sending focus session data with duration: {duration}")
+    print(f"DEBUG: JWT token: {jwt_token}")
 
     try:
         response = requests.post(FLASK_API_URL, json=payload, headers=headers)
+        print(f"DEBUG: Received response: {response.status_code} - {response.text}")
         return response.json()
     except requests.exceptions.RequestException as e:
+        print(f"DEBUG: Request failed with error: {e}")
         return {"error": str(e)}
