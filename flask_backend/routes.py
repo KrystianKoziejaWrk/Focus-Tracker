@@ -81,7 +81,7 @@ def register():
         user_check = Users.query.filter_by(email=email).first()
         if user_check:
             flash("User already exists!")
-            return redirect(url_for("auth.register"))
+            return redirect(url_for("auth.login"))
         
         #hash the password
         hashed_password = generate_password_hash(password)
