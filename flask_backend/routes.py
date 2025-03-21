@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, flash, render_template, redirect, url_for, session, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request, get_jwt, set_access_cookies
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request, get_jwt, set_access_cookies, unset_jwt_cookies
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from flask_backend.models import db, Users, FocusSession
@@ -14,7 +14,13 @@ auth = Blueprint("auth", __name__)
 #homepage route idk why i cant just put it insdie of app py
 @auth.route("/")
 def homepage():
-    return render_template("homepage.html")
+    try:
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+        user = Users.query.get(user_id) if user_id else None
+    except:
+        user = None
+    return render_template("homepage.html", user=user)
 
 @auth.route("/list_users")
 def list_users():
@@ -24,9 +30,13 @@ def list_users():
 
 #dashboard route
 @auth.route("/dashboard")
-@jwt_required()
 def dashboard():
     try:
+        # Check if the JWT token cookie is present
+        if not request.cookies.get('access_token_cookie'):
+            flash("You need to register or log in to access the dashboard.", "danger")
+            return redirect(url_for("auth.register"))
+
         verify_jwt_in_request()
         user_id = get_jwt_identity()
         user = Users.query.get(user_id)
@@ -37,6 +47,7 @@ def dashboard():
         print("DEBUG: Dashboard access failed =>", e)
         flash(f"Dashboard access failed: {str(e)}", "danger")
         return redirect(url_for("auth.login"))
+
 
 #loading google credentials form a file
 with open("flask_backend/client_secret.json", "r") as f:
@@ -79,9 +90,9 @@ def register():
         user_object = Users(username = username, email = email, password = hashed_password,)
         db.session.add(user_object)
         db.session.commit()
-
+        print("DEBUG: User created =>", user_object)  # Add this line for debugging
         flash("Registration successful!")
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth.dashboard"))
     
     return render_template("register.html")
 
@@ -97,14 +108,17 @@ def login():
         if not user or not check_password_hash(user.password, password):
             flash("Invalid email or password")
             return redirect(url_for("auth.login"))
-        #Creating the java scrypt web token
-        access_token = create_access_token(identity=user.id, expires_delta=timedelta(days=7))
+        
+        # Create the JWT token
+        access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
 
-        #store the jwt in the session
-        session["jwt_token"] = access_token
+        # Store the JWT token in a cookie
+        response = make_response(redirect(url_for("auth.dashboard")))
+        set_access_cookies(response, access_token)
+        print("DEBUG: JWT Token stored in cookie")  # Add this line for debugging
 
         flash("Login successful!")
-        return redirect(url_for("auth.dashboard"))
+        return response
     
     return render_template("login.html")
 
@@ -168,9 +182,10 @@ def google_callback():
 
 @auth.route("/logout")
 def logout():
-    session.pop("jwt_token", None) #Removes jwt token
+    response = make_response(redirect(url_for("auth.homepage")))
+    unset_jwt_cookies(response)
     flash("Logout successful")
-    return redirect(url_for("auth.homepage"))
+    return response
 
 """
 IMPORTANT STUFF FOR GETTING UPLOADING SESSION DATA AND GETTING IT AS WELL!!!!

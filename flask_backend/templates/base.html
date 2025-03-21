@@ -31,11 +31,6 @@
         <!-- Collapsible Nav Section -->
         <div class="collapse navbar-collapse justify-content-end" id="topNav">
           <ul class="navbar-nav">
-            <!-- Example Link for Dashboard (Optional) -->
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('auth.dashboard') }}">Dashboard</a>
-            </li>
-
             <!-- Profile Dropdown on the Right -->
             <li class="nav-item dropdown">
               <!-- We assume you pass "user" to the template. If not, replace with a placeholder. -->
@@ -50,12 +45,6 @@
                 {% if user %}{{ user.username }}{% else %}Profile{% endif %}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                <li>
-                  <a class="dropdown-item" href="{{ url_for('auth.dashboard') }}">
-                    Dashboard
-                  </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
                 <li>
                   <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
                     Logout
