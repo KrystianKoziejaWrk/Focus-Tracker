@@ -74,6 +74,7 @@ class LoginWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
+        print("DEBUG: Connecting token_received signal to handle_token_received slot")
         self.token_received.connect(self.handle_token_received)
 
     def login(self):
@@ -88,7 +89,6 @@ class LoginWindow(QMainWindow):
             save_token(jwt_token)
             self.status_label.setText("Login successful!")
             print("DEBUG: Login successful, JWT token received")
-
             self.close()
             self.open_focus_tracker(jwt_token)
         else:
@@ -96,11 +96,13 @@ class LoginWindow(QMainWindow):
             print("DEBUG: Login failed, status code:", response.status_code)
 
     def google_login(self):
+        print("DEBUG: Opening Google login URL")
         webbrowser.open(GOOGLE_LOGIN_URL)
         self.start_local_server()
 
     def start_local_server(self):
-        self.server_thread = threading.Thread(target=self.run_local_server)
+        print("DEBUG: Starting local server")
+        self.server_thread = threading.Thread(target=self.run_local_server, daemon=True)
         self.server_thread.start()
 
     def run_local_server(self):
@@ -108,39 +110,75 @@ class LoginWindow(QMainWindow):
         httpd = HTTPServer(server_address, self.RequestHandler)
         self.RequestHandler.app = self  # Pass the app instance to the handler
         self.httpd = httpd
+        print("DEBUG: Local server running on port 8000")
         httpd.serve_forever()
 
     class RequestHandler(BaseHTTPRequestHandler):
         app = None
 
-        def do_GET(self):
-            if self.path.startswith("/callback"):
-                query = self.path.split("?")[1]
-                params = dict(qc.split("=") for qc in query.split("&"))
+    def do_GET(self):
+        print(f"DEBUG: Received GET request: {self.path}")
+        if self.path.startswith("/callback"):
+            if "?" in self.path:
+                query = self.path.split("?", 1)[1]
+                try:
+                    params = dict(qc.split("=") for qc in query.split("&"))
+                    print("DEBUG: Parsed query parameters:", params)
+                except Exception as e:
+                    print("DEBUG: Error parsing query params:", e)
+                    self.send_error(400, "Bad Request")
+                    return
                 jwt_token = params.get("access_token")
                 if jwt_token:
                     self.send_response(200)
                     self.send_header("Content-type", "text/html")
                     self.end_headers()
                     self.wfile.write(b"Login successful! You can close this window.")
-                    self.server.jwt_token = jwt_token
+                    print(f"DEBUG: JWT token received in RequestHandler: {jwt_token}")
+                    # Shutdown the server first.
                     self.server.shutdown()
-                    self.app.token_received.emit(jwt_token)
+                    print("DEBUG: Server shutdown initiated.")
+                    # Use QTimer.singleShot with a 100ms delay to ensure the main event loop is ready.
+                    def emit_token_signal():
+                        print("DEBUG: Emitting token_received signal from QTimer callback")
+                        self.app.token_received.emit(jwt_token)
+                    QTimer.singleShot(100, emit_token_signal)
+                    print("DEBUG: QTimer.singleShot scheduled to emit token_received signal.")
+                else:
+                    print("DEBUG: access_token not found in query parameters")
+                    self.send_error(400, "Missing access_token")
+            else:
+                print("DEBUG: No query parameters found in callback URL")
+                self.send_error(400, "No query parameters provided")
+
+
 
     def handle_token_received(self, jwt_token):
-        save_token(jwt_token)
-        self.status_label.setText("Login successful!")
-        print("DEBUG: Login successful, JWT token received")
-
-        self.close()
-        self.open_focus_tracker(jwt_token)
+        print(f"DEBUG: Entered handle_token_received with token: {jwt_token}")
+        try:
+            save_token(jwt_token)
+            self.status_label.setText("Login successful!")
+            print("DEBUG: Token saved and status label updated")
+            self.open_focus_tracker(jwt_token)
+            print("DEBUG: FocusTracker should now be open")
+        except Exception as e:
+            print(f"DEBUG: Exception in handle_token_received: {e}")
 
     def open_focus_tracker(self, jwt_token):
-        self.focus_tracker = FocusTracker(jwt_token)
-        self.focus_tracker.show()
+        print(f"DEBUG: Opening FocusTracker with token: {jwt_token}")
+        try:
+            self.focus_tracker = FocusTracker(jwt_token)
+            self.focus_tracker.show()
+            self.focus_tracker.raise_()
+            self.focus_tracker.activateWindow()
+            print("DEBUG: FocusTracker is now visible")
+            self.close()
+        except Exception as e:
+            print(f"DEBUG: Exception in open_focus_tracker: {e}")
 
     def closeEvent(self, event):
         if hasattr(self, 'httpd'):
+            print("DEBUG: Shutting down HTTP server on close")
             self.httpd.shutdown()
         event.accept()
 
@@ -171,6 +209,7 @@ class FocusTracker(QMainWindow):
         self.setCentralWidget(container)
 
         keyboard.add_hotkey("ctrl+shift+f", self.toggle_focus)
+        print("DEBUG: FocusTracker initialized with token:", jwt_token)
 
     def toggle_focus(self):
         if not self.focus_active:
@@ -180,7 +219,6 @@ class FocusTracker(QMainWindow):
         else:
             duration = int(time.time() - self.start_time)
             send_focus_data(duration, self.jwt_token)
-
             self.focus_active = False
             self.status_label.setText("Status: Not Tracking (Press Ctrl+Shift+F to Start)")
 
@@ -196,8 +234,10 @@ if __name__ == "__main__":
     jwt_token = load_token()
 
     if jwt_token:
+        print("DEBUG: Loaded existing JWT token, launching FocusTracker")
         window = FocusTracker(jwt_token)
     else:
+        print("DEBUG: No existing JWT token, launching LoginWindow")
         window = LoginWindow()
 
     window.show()

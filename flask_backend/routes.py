@@ -49,7 +49,7 @@ def dashboard():
         return redirect(url_for("auth.login"))
 
 
-#loading google credentials form a file
+# Google OAuth configuration
 with open("flask_backend/client_secret.json", "r") as f:
     google_creds = json.load(f)
 
@@ -57,10 +57,9 @@ GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
 GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
 REDIRECT_URI = google_creds["web"]["redirect_uris"][0]
 
-# OAuth config
 google_auth = OAuth2Session(
     GOOGLE_CLIENT_ID,
-    redirect_uri="http://127.0.0.1:5000/google/callback",
+    redirect_uri=REDIRECT_URI,
     scope=[
         "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/userinfo.email",
@@ -151,42 +150,43 @@ def google_login():
 @auth.route("/google/callback")
 def google_callback():
     try:
-        print("DEBUG: Trying to get token")
-        # Exchange auth token for access token
-        token = google_auth.fetch_token(
+        state = session.get("oauth_state")
+        if not state:
+            return jsonify({"msg": "State missing from session"}), 400
+
+        google = OAuth2Session(
+            GOOGLE_CLIENT_ID,
+            redirect_uri=REDIRECT_URI,
+            state=state
+        )
+        token = google.fetch_token(
             "https://oauth2.googleapis.com/token",
             client_secret=GOOGLE_CLIENT_SECRET,
             authorization_response=request.url,
         )
         print("DEBUG: Token =>", token)
 
-        # Get the user information
-        user_info = google_auth.get("https://www.googleapis.com/oauth2/v3/userinfo").json()
+        user_info = google.get("https://www.googleapis.com/oauth2/v3/userinfo").json()
         print("DEBUG: User Info =>", user_info)
 
         email = user_info["email"]
         username = user_info["name"]
 
-        # See if the user already exists in the database
         user = Users.query.filter_by(email=email).first()
         if not user:
-            # Create the new user account
             user = Users(username=username, email=email)
             db.session.add(user)
             db.session.commit()
             print("DEBUG: New user created =>", user)
 
-        # Create a JWT token
         access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
         print("DEBUG: Access Token =>", access_token)
 
-        # Check the source of the login request
         source = session.get("login_source", "web")
         if source == "pyqt":
-            # Redirect to the local server running in the PyQt application with the JWT token as a URL parameter
+            print("DEBUG: Redirecting to PyQt application with access token")
             return redirect(f"http://127.0.0.1:8000/callback?access_token={access_token}")
         else:
-            # Store the JWT token in a cookie and redirect to the dashboard for web
             response = make_response(redirect(url_for("auth.dashboard")))
             set_access_cookies(response, access_token)
             print("DEBUG: JWT Token stored in cookie")
