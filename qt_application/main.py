@@ -83,7 +83,6 @@ class LoginWindow(QMainWindow):
         print(f"DEBUG: Sending login request with email: {email}")
 
         response = requests.post(FLASK_API_URL, json={"email": email, "password": password})
-
         if response.status_code == 200:
             jwt_token = response.json().get("access_token")
             save_token(jwt_token)
@@ -113,45 +112,58 @@ class LoginWindow(QMainWindow):
         print("DEBUG: Local server running on port 8000")
         httpd.serve_forever()
 
+    def shutdown_http_server(self):
+        if hasattr(self, 'httpd') and self.httpd:
+            try:
+                print("DEBUG: Shutting down HTTP server gracefully")
+                self.httpd.shutdown()
+                self.httpd.server_close()
+            except Exception as e:
+                print("DEBUG: Exception during HTTP server shutdown:", e)
+            self.httpd = None
+
+    # Nested RequestHandler class inside LoginWindow
     class RequestHandler(BaseHTTPRequestHandler):
         app = None
 
-    def do_GET(self):
-        print(f"DEBUG: Received GET request: {self.path}")
-        if self.path.startswith("/callback"):
-            if "?" in self.path:
-                query = self.path.split("?", 1)[1]
-                try:
-                    params = dict(qc.split("=") for qc in query.split("&"))
-                    print("DEBUG: Parsed query parameters:", params)
-                except Exception as e:
-                    print("DEBUG: Error parsing query params:", e)
-                    self.send_error(400, "Bad Request")
-                    return
-                jwt_token = params.get("access_token")
-                if jwt_token:
-                    self.send_response(200)
-                    self.send_header("Content-type", "text/html")
-                    self.end_headers()
-                    self.wfile.write(b"Login successful! You can close this window.")
-                    print(f"DEBUG: JWT token received in RequestHandler: {jwt_token}")
-                    # Shutdown the server first.
-                    self.server.shutdown()
-                    print("DEBUG: Server shutdown initiated.")
-                    # Use QTimer.singleShot with a 100ms delay to ensure the main event loop is ready.
-                    def emit_token_signal():
-                        print("DEBUG: Emitting token_received signal from QTimer callback")
+        def do_GET(self):
+            print(f"DEBUG: Received GET request: {self.path}")
+            if self.path.startswith("/callback"):
+                if "?" in self.path:
+                    query = self.path.split("?", 1)[1]
+                    try:
+                        params = dict(qc.split("=") for qc in query.split("&"))
+                        print("DEBUG: Parsed query parameters:", params)
+                    except Exception as e:
+                        print("DEBUG: Error parsing query params:", e)
+                        self.send_error(400, "Bad Request")
+                        return
+                    jwt_token = params.get("access_token")
+                    if jwt_token:
+                        self.send_response(200)
+                        self.send_header("Content-type", "text/html")
+                        self.end_headers()
+                        self.wfile.write(b"Login successful! You can close this window.")
+                        print(f"DEBUG: JWT token received in RequestHandler: {jwt_token}")
+                        
+                        # Emit the token_received signal directly.
+                        print("DEBUG: Emitting token_received signal directly")
                         self.app.token_received.emit(jwt_token)
-                    QTimer.singleShot(100, emit_token_signal)
-                    print("DEBUG: QTimer.singleShot scheduled to emit token_received signal.")
+                        
+                        # Now shut down the HTTP server.
+                        print("DEBUG: Shutting down HTTP server")
+                        self.server.shutdown()
+                        self.server.server_close()
+                    else:
+                        print("DEBUG: access_token not found in query parameters")
+                        self.send_error(400, "Missing access_token")
                 else:
-                    print("DEBUG: access_token not found in query parameters")
-                    self.send_error(400, "Missing access_token")
+                    print("DEBUG: No query parameters found in callback URL")
+                    self.send_error(400, "No query parameters provided")
+            elif self.path.startswith("/favicon.ico"):
+                self.send_error(404)
             else:
-                print("DEBUG: No query parameters found in callback URL")
-                self.send_error(400, "No query parameters provided")
-
-
+                self.send_error(501, "Unsupported method")
 
     def handle_token_received(self, jwt_token):
         print(f"DEBUG: Entered handle_token_received with token: {jwt_token}")
@@ -172,14 +184,16 @@ class LoginWindow(QMainWindow):
             self.focus_tracker.raise_()
             self.focus_tracker.activateWindow()
             print("DEBUG: FocusTracker is now visible")
-            self.close()
+            # Hide the LoginWindow and then close it after a short delay
+            self.hide()
+            QTimer.singleShot(200, self.close)
         except Exception as e:
             print(f"DEBUG: Exception in open_focus_tracker: {e}")
 
     def closeEvent(self, event):
-        if hasattr(self, 'httpd'):
+        if hasattr(self, 'httpd') and self.httpd:
             print("DEBUG: Shutting down HTTP server on close")
-            self.httpd.shutdown()
+            self.shutdown_http_server()
         event.accept()
 
 class FocusTracker(QMainWindow):
@@ -227,6 +241,12 @@ class FocusTracker(QMainWindow):
         self.close()
         self.login_window = LoginWindow()
         self.login_window.show()
+
+    def closeEvent(self, event):
+        # Clear hotkeys to prevent the global hotkey from firing after the window is closed.
+        print("DEBUG: FocusTracker closing, clearing all hotkeys.")
+        keyboard.clear_all_hotkeys()
+        event.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
