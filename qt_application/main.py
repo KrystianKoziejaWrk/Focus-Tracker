@@ -2,13 +2,12 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBo
 from PyQt6.QtGui import QFont
 import sys
 import time
-import keyboard
 import requests
 import json
 import webbrowser
-from PyQt6.QtCore import QUrl, QEventLoop, QTimer, QThread, pyqtSignal
-from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from PyQt6.QtCore import QTimer, pyqtSignal, QThread
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import keyboard  # Global hotkey library
 import threading
 
 from api_handler import send_focus_data
@@ -33,15 +32,35 @@ def clear_token():
     with open("token.json", "w") as f:
         json.dump({"jwt_token": ""}, f)
 
+# QThread subclass to run the HTTP server
+class HttpServerThread(QThread):
+    def __init__(self, handler_class, port=8000, parent=None):
+        super().__init__(parent)
+        self.port = port
+        self.handler_class = handler_class
+        self.server = None
+
+    def run(self):
+        server_address = ('', self.port)
+        self.server = HTTPServer(server_address, self.handler_class)
+        print(f"DEBUG: HTTP Server thread running on port {self.port}")
+        self.server.serve_forever()
+
+    def shutdown(self):
+        if self.server:
+            print("DEBUG: HTTP Server thread shutting down")
+            self.server.shutdown()
+            self.server.server_close()
+        self.quit()
+        self.wait()
+
 class LoginWindow(QMainWindow):
     token_received = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("Login")
         self.setGeometry(100, 100, 400, 300)
-
         layout = QVBoxLayout()
 
         self.email_input = QLineEdit(self)
@@ -76,12 +95,12 @@ class LoginWindow(QMainWindow):
 
         print("DEBUG: Connecting token_received signal to handle_token_received slot")
         self.token_received.connect(self.handle_token_received)
+        self.http_server_thread = None
 
     def login(self):
         email = self.email_input.text()
         password = self.password_input.text()
         print(f"DEBUG: Sending login request with email: {email}")
-
         response = requests.post(FLASK_API_URL, json={"email": email, "password": password})
         if response.status_code == 200:
             jwt_token = response.json().get("access_token")
@@ -100,32 +119,19 @@ class LoginWindow(QMainWindow):
         self.start_local_server()
 
     def start_local_server(self):
-        print("DEBUG: Starting local server")
-        self.server_thread = threading.Thread(target=self.run_local_server, daemon=True)
-        self.server_thread.start()
-
-    def run_local_server(self):
-        server_address = ('', 8000)
-        httpd = HTTPServer(server_address, self.RequestHandler)
-        self.RequestHandler.app = self  # Pass the app instance to the handler
-        self.httpd = httpd
-        print("DEBUG: Local server running on port 8000")
-        httpd.serve_forever()
+        print("DEBUG: Starting HTTP server thread")
+        self.http_server_thread = HttpServerThread(self.RequestHandler, port=8000)
+        self.RequestHandler.app = self  # Pass self to RequestHandler
+        self.http_server_thread.start()
 
     def shutdown_http_server(self):
-        if hasattr(self, 'httpd') and self.httpd:
-            try:
-                print("DEBUG: Shutting down HTTP server gracefully")
-                self.httpd.shutdown()
-                self.httpd.server_close()
-            except Exception as e:
-                print("DEBUG: Exception during HTTP server shutdown:", e)
-            self.httpd = None
+        if self.http_server_thread:
+            self.http_server_thread.shutdown()
+            self.http_server_thread = None
 
     # Nested RequestHandler class inside LoginWindow
     class RequestHandler(BaseHTTPRequestHandler):
         app = None
-
         def do_GET(self):
             print(f"DEBUG: Received GET request: {self.path}")
             if self.path.startswith("/callback"):
@@ -142,18 +148,14 @@ class LoginWindow(QMainWindow):
                     if jwt_token:
                         self.send_response(200)
                         self.send_header("Content-type", "text/html")
+                        self.send_header("Connection", "close")
                         self.end_headers()
                         self.wfile.write(b"Login successful! You can close this window.")
+                        self.wfile.flush()
                         print(f"DEBUG: JWT token received in RequestHandler: {jwt_token}")
-                        
-                        # Emit the token_received signal directly.
-                        print("DEBUG: Emitting token_received signal directly")
+                        print("DEBUG: Emitting token_received signal")
                         self.app.token_received.emit(jwt_token)
-                        
-                        # Now shut down the HTTP server.
-                        print("DEBUG: Shutting down HTTP server")
-                        self.server.shutdown()
-                        self.server.server_close()
+                        QTimer.singleShot(50, self.app.shutdown_http_server)
                     else:
                         print("DEBUG: access_token not found in query parameters")
                         self.send_error(400, "Missing access_token")
@@ -173,6 +175,7 @@ class LoginWindow(QMainWindow):
             print("DEBUG: Token saved and status label updated")
             self.open_focus_tracker(jwt_token)
             print("DEBUG: FocusTracker should now be open")
+            self.shutdown_http_server()
         except Exception as e:
             print(f"DEBUG: Exception in handle_token_received: {e}")
 
@@ -184,57 +187,60 @@ class LoginWindow(QMainWindow):
             self.focus_tracker.raise_()
             self.focus_tracker.activateWindow()
             print("DEBUG: FocusTracker is now visible")
-            # Hide the LoginWindow and then close it after a short delay
             self.hide()
             QTimer.singleShot(200, self.close)
         except Exception as e:
             print(f"DEBUG: Exception in open_focus_tracker: {e}")
 
     def closeEvent(self, event):
-        if hasattr(self, 'httpd') and self.httpd:
-            print("DEBUG: Shutting down HTTP server on close")
+        if self.http_server_thread:
+            print("DEBUG: Shutting down HTTP server in closeEvent")
             self.shutdown_http_server()
         event.accept()
 
 class FocusTracker(QMainWindow):
     def __init__(self, jwt_token):
         super().__init__()
-
         self.jwt_token = jwt_token
         self.focus_active = False
         self.start_time = None
-
         self.setWindowTitle("Focus Tracker")
         self.setGeometry(100, 100, 400, 300)
-
         layout = QVBoxLayout()
         self.status_label = QLabel("Status: Not Tracking")
         self.status_label.setFont(QFont("Arial", 12))
-
         self.logout_button = QPushButton("Logout", self)
         self.logout_button.setFont(QFont("Arial", 12))
         self.logout_button.clicked.connect(self.logout)
-
         layout.addWidget(self.status_label)
         layout.addWidget(self.logout_button)
-
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
+        
+        try:
+            print("DEBUG: Registering global hotkey Ctrl+Shift+F")
+            self.hotkey_handle = keyboard.add_hotkey("ctrl+shift+f", self.toggle_focus)
+            print("DEBUG: Global hotkey registered")
+        except Exception as e:
+            print("DEBUG: Exception registering global hotkey:", e)
+            self.hotkey_handle = None
 
-        keyboard.add_hotkey("ctrl+shift+f", self.toggle_focus)
         print("DEBUG: FocusTracker initialized with token:", jwt_token)
 
     def toggle_focus(self):
+        print("DEBUG: Global hotkey activated")
         if not self.focus_active:
             self.start_time = time.time()
             self.focus_active = True
             self.status_label.setText("Status: Focused (Press Ctrl+Shift+F to stop)")
+            print("DEBUG: Focus tracking started")
         else:
             duration = int(time.time() - self.start_time)
             send_focus_data(duration, self.jwt_token)
             self.focus_active = False
             self.status_label.setText("Status: Not Tracking (Press Ctrl+Shift+F to Start)")
+            print(f"DEBUG: Focus tracking stopped. Duration: {duration} seconds")
 
     def logout(self):
         clear_token()
@@ -243,22 +249,23 @@ class FocusTracker(QMainWindow):
         self.login_window.show()
 
     def closeEvent(self, event):
-        # Clear hotkeys to prevent the global hotkey from firing after the window is closed.
-        print("DEBUG: FocusTracker closing, clearing all hotkeys.")
-        keyboard.clear_all_hotkeys()
+        print("DEBUG: FocusTracker closing, removing global hotkey")
+        try:
+            if self.hotkey_handle is not None:
+                keyboard.remove_hotkey(self.hotkey_handle)
+                print("DEBUG: Global hotkey removed")
+        except Exception as e:
+            print("DEBUG: Exception while removing hotkey:", e)
         event.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     jwt_token = load_token()
-
     if jwt_token:
         print("DEBUG: Loaded existing JWT token, launching FocusTracker")
         window = FocusTracker(jwt_token)
     else:
         print("DEBUG: No existing JWT token, launching LoginWindow")
         window = LoginWindow()
-
     window.show()
     sys.exit(app.exec())
