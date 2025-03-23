@@ -1,19 +1,19 @@
-from flask import Flask, jsonify, request, send_from_directory, render_template, url_for, redirect, flash, session
+from flask import Flask, jsonify, request, render_template, url_for, redirect, flash, session
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, set_access_cookies, unset_jwt_cookies
 from flask_wtf.csrf import CSRFProtect, generate_csrf
-
-# Google auth
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
-
 from flask_backend.models import db, Users, FocusSession
 from flask_backend.routes import auth
-
 import os
 
 app = Flask(__name__)
+
+# For development, disable CSRF entirely. (Do not disable in production!)
+app.config["WTF_CSRF_ENABLED"] = False
+
 csrf = CSRFProtect(app)
 
 # Configure the database
@@ -29,10 +29,9 @@ app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]  # Accept JWT tokens f
 app.config["JWT_COOKIE_SECURE"] = False  # Set to True in production with HTTPS
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Disable JWT cookie CSRF protection for development
 
-"""THIS IS THE MOST INSECURE CODE IN 20202022020202022020205 PLEASE DO NOT DEPLOY APP UNTIL THIS IS CHANGED"""
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# Initialize the database
+# Initialize the database and JWT
 db.init_app(app)
 jwt = JWTManager(app)
 
@@ -40,7 +39,7 @@ with app.app_context():
     db.create_all()
 
 # Register Blueprint
-app.register_blueprint(auth, url_prefix='/')  # Ensure the blueprint is registered with the correct prefix
+app.register_blueprint(auth, url_prefix='/')  # Blueprint already contains CSRF exemptions if needed
 
 # Ensure CSRF token is available in all templates by returning it directly.
 @app.context_processor

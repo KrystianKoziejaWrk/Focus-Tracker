@@ -1,6 +1,14 @@
 from flask import Blueprint, request, jsonify, flash, render_template, redirect, url_for, session, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request, get_jwt, set_access_cookies, unset_jwt_cookies
+from flask_jwt_extended import (
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+    verify_jwt_in_request,
+    get_jwt,
+    set_access_cookies,
+    unset_jwt_cookies
+)
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from flask_backend.models import db, Users, FocusSession
@@ -9,7 +17,7 @@ import pytz
 import json
 from requests_oauthlib import OAuth2Session
 
-# Instead of importing csrf_exempt (which is unavailable), define a dummy decorator.
+# Define a dummy csrf_exempt decorator if not available
 try:
     from flask_wtf.csrf import csrf_exempt
 except ImportError:
@@ -51,7 +59,7 @@ def list_users():
 
 # Time zone change route
 @auth.route("/change_timezone", methods=["POST"])
-@csrf_exempt  # CSRF protection is disabled for this route via our dummy decorator
+@csrf_exempt  # Disable CSRF protection for this route
 @jwt_required()
 def change_timezone():
     user_id = get_jwt_identity()
@@ -228,37 +236,37 @@ def logout():
     flash("Logout successful")
     return response
 
-# Add session route
+# Place csrf_exempt as the outermost decorator for this API endpoint.
+@csrf_exempt
 @auth.route("/add_session", methods=["POST"])
 @jwt_required()
 def add_session():
     user_id = get_jwt_identity()
-    data = request.json
+    data = request.get_json()
+    print("DEBUG: Received JSON data in /add_session:", data)
+    if not data:
+        return jsonify({"msg": "No JSON data provided"}), 400
     duration = data.get("duration")
+    if duration is None:
+        return jsonify({"msg": "Duration is required"}), 400
     print(f"DEBUG: Received focus session data with duration: {duration}")
     print(f"DEBUG: User ID from JWT: {user_id}")
-
     new_session = FocusSession(user_id=user_id, duration=duration)
     db.session.add(new_session)
     db.session.commit()
-
     print("DEBUG: Focus session added to the database")
     return jsonify({"message": "Focus session added!"}), 201
 
-# Get sessions route
 @auth.route("/get_sessions", methods=["GET"])
 @jwt_required()
 def get_sessions():
     user_id = get_jwt_identity()
     user = Users.query.get(user_id)
-
     sessions = FocusSession.query.filter_by(user_id=user_id).all()
     user_timezone = user.timezone
-
     def convert_to_local_time(utc_time):
         local_tz = pytz.timezone(user_timezone)
         return utc_time.astimezone(local_tz)
-
     sessions_data = [
         {
             "id": s.id,
@@ -268,5 +276,4 @@ def get_sessions():
         }
         for s in sessions
     ]
-
     return jsonify(sessions_data)
