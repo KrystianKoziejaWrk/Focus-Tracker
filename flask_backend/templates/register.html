@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Focus Tracker – Register</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* Basic styling to center the form vertically */
+      html,
+      body {
+        height: 100%;
+        background: #f8f9fa;
+        margin: 0;
+      }
+      
+      /* This container holds the form elements */
+      .register-container {
+        max-width: 400px;
+        /* Force a taller container: */
+        min-height: 600px; /* ← Increase this if you need more space */
+        margin: auto;
+        padding: 2rem;
+        background: #fff;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 4rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between; /* ensures spacing between top/bottom elements */
+      }
+      
+      /* Additional spacing if needed */
+      .form-content {
+        margin-bottom: 1rem; /* separate content from bottom */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container h-100 d-flex align-items-center">
+      <div class="register-container w-100">
+        
+        <!-- Top heading -->
+        <div class="text-center mb-4">
+          <h2>Create Account</h2>
+        </div>
+
+        <!-- Form content grouping -->
+        <div class="form-content">
+          <form method="POST" action="{{ url_for('auth.register') }}">
+            <!-- Username field -->
+            <div class="mb-3">
+              <label for="user_input" class="form-label">Username</label>
+              <input
+                type="text"
+                class="form-control"
+                id="user_input"
+                name="user_input"
+                placeholder="Enter your username"
+                required
+              />
+            </div>
+
+            <!-- Email field -->
+            <div class="mb-3">
+              <label for="email_input" class="form-label">Email</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email_input"
+                name="email_input"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <!-- Password field -->
+            <div class="mb-3">
+              <label for="password_input" class="form-label">Password</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password_input"
+                name="password_input"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            <!-- Sign Up button -->
+            <button type="submit" class="btn btn-primary w-100 mb-3">
+              Sign Up
+            </button>
+          </form>
+
+          <!-- Sign Up with Google button (placeholder) -->
+          <a
+            href="{{ url_for('auth.google_login') }}"
+            class="btn btn-outline-danger w-100 mb-3"
+          >
+            <i class="bi bi-google"></i> Sign up with Google
+          </a>
+        </div>
+
+        <!-- Bottom link: already have an account? -->
+        <div class="text-center">
+          <p class="mb-0">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}">Login</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    ></script>
+    <!-- (Optional) If you want icons, import bootstrap-icons or other icon sets -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.min.css"
+    />
+  </body>
+</html>
+  
