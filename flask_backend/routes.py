@@ -12,7 +12,7 @@ from flask_jwt_extended import (
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from flask_backend.models import db, Users, FocusSession
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytz
 import json
 from requests_oauthlib import OAuth2Session
@@ -57,6 +57,67 @@ def list_users():
     users_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
     return jsonify(users_data)
 
+@auth.route("/chart_data", methods=["GET"])
+@jwt_required()
+def chart_data():
+    user_id = get_jwt_identity()
+    user = Users.query.get(user_id)
+    # Use user's timezone; default to UTC if not set.
+    user_timezone = user.timezone if user and user.timezone else "UTC"
+    local_tz = pytz.timezone(user_timezone)
+
+    # Get the current time in the user's timezone.
+    now_local = datetime.now(local_tz)
+    # Determine the most recent Sunday.
+    # Python's weekday() gives Monday=0 ... Sunday=6.
+    # If today is Sunday (6), then days_to_subtract = 0; otherwise, subtract (weekday+1) days.
+    days_to_subtract = (now_local.weekday() + 1) % 7
+    start_of_week = now_local - timedelta(days=days_to_subtract)
+    # Set time to the start of that day.
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+    # Build labels for each day of the week (in user timezone).
+    labels = []
+    for i in range(7):
+        day = start_of_week + timedelta(days=i)
+        # You can format the day as you like.
+        labels.append(day.strftime("%Y-%m-%d"))
+
+    # Convert the week boundaries back to UTC for querying,
+    # assuming your stored timestamps are in UTC.
+    start_of_week_utc = start_of_week.astimezone(pytz.utc)
+    end_of_week_utc = end_of_week.astimezone(pytz.utc)
+
+    # Query sessions for the current week.
+    sessions = FocusSession.query.filter(
+        FocusSession.user_id == user_id,
+        FocusSession.start_time >= start_of_week_utc,
+        FocusSession.start_time <= end_of_week_utc
+    ).all()
+
+    # Initialize a dictionary with each day as key and 0 duration.
+    durations_dict = {label: 0 for label in labels}
+
+    # For each session, convert its start_time to the user's timezone,
+    # then add its duration (assumed to be in seconds) to the corresponding day.
+    for s in sessions:
+        # Ensure the time is UTC-aware.
+        utc_time = s.start_time
+        if utc_time.tzinfo is None:
+            utc_time = utc_time.replace(tzinfo=pytz.utc)
+        local_time = utc_time.astimezone(local_tz)
+        day_str = local_time.strftime("%Y-%m-%d")
+        if day_str in durations_dict:
+            durations_dict[day_str] += s.duration
+
+    # Build the durations list in the order of labels.
+    durations = [durations_dict[label] for label in labels]
+
+    return jsonify({"labels": labels, "data": durations})
+
+
+
 # Time zone change route
 @auth.route("/change_timezone", methods=["POST"])
 @csrf_exempt  # Disable CSRF protection for this route
@@ -80,12 +141,35 @@ def dashboard():
     try:
         user_id = get_jwt_identity()
         user = Users.query.get(user_id)
+        print("DEBUG: User timezone is now:", user.timezone)
         sessions = FocusSession.query.filter_by(user_id=user_id).all()
-        return render_template("dashboard.html", sessions=sessions, user=user, timezones=COMMON_TIMEZONES)
+        user_timezone = user.timezone if user and user.timezone else "UTC"
+
+        def convert_to_local_time(utc_time):
+            # If the datetime is naive, assume it's in UTC.
+            if utc_time.tzinfo is None:
+                utc_time = utc_time.replace(tzinfo=timezone.utc)
+            local_tz = pytz.timezone(user_timezone)
+            return utc_time.astimezone(local_tz)
+
+        # Build a list of sessions with converted times
+        sessions_converted = []
+        for s in sessions:
+            local_time = convert_to_local_time(s.start_time)
+            print(f"DEBUG: Session {s.id} UTC: {s.start_time}, Local: {local_time}")
+            sessions_converted.append({
+                "id": s.id,
+                "start_time": local_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": convert_to_local_time(s.end_time).strftime("%Y-%m-%d %H:%M:%S") if s.end_time else "Ongoing",
+                "duration": s.duration
+            })
+
+        return render_template("dashboard.html", sessions=sessions_converted, user=user, timezones=COMMON_TIMEZONES)
     except Exception as e:
         print("DEBUG: Dashboard access failed =>", e)
         flash(f"Dashboard access failed: {str(e)}", "danger")
         return redirect(url_for("auth.login"))
+
 
 # Google OAuth configuration
 with open("flask_backend/client_secret.json", "r") as f:
