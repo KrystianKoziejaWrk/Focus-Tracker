@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory, render_template,
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, set_access_cookies, unset_jwt_cookies
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 
 # Google auth
 from google.auth.transport.requests import Request
@@ -13,6 +14,7 @@ from flask_backend.routes import auth
 import os
 
 app = Flask(__name__)
+csrf = CSRFProtect(app)
 
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"  # SQLite for local testing
@@ -25,9 +27,9 @@ app.config["JWT_SECRET_KEY"] = "jwtsecretkey"
 # JWT config
 app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]  # Accept JWT tokens from both cookies and headers
 app.config["JWT_COOKIE_SECURE"] = False  # Set to True in production with HTTPS
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Disable JWT cookie CSRF protection for development
 
-"""THIS IS THE MOST INSECURE CODE IN 20202022020202022020205 PLEASE DO NOT DEPLOY APP UNTILL THIS IS CHANGED"""
-# This is the whole google error we got please look at this before deploying bro please!!!!!!!!!!!!!
+"""THIS IS THE MOST INSECURE CODE IN 20202022020202022020205 PLEASE DO NOT DEPLOY APP UNTIL THIS IS CHANGED"""
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # Initialize the database
@@ -39,6 +41,11 @@ with app.app_context():
 
 # Register Blueprint
 app.register_blueprint(auth, url_prefix='/')  # Ensure the blueprint is registered with the correct prefix
+
+# Ensure CSRF token is available in all templates by returning it directly.
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf())
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -6,6 +6,22 @@
     <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
       <h1 class="h2 mt-3">Dashboard</h1>
       
+      <div class="d-flex justify-content-end mb-3">
+        <!-- Time Zone Change Form -->
+        <form id="timezone-form" method="POST" action="{{ url_for('auth.change_timezone') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="input-group">
+            <label for="timezone" class="input-group-text">Time Zone</label>
+            <select class="form-select" id="timezone" name="timezone">
+              {% for tz in timezones %}
+              <option value="{{ tz }}" {% if tz == user.timezone %}selected{% endif %}>{{ tz }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Change</button>
+          </div>
+        </form>
+      </div>
+      
       <canvas class="my-4 w-100" id="focusChart" width="900" height="380"></canvas>
       
       <h2>Session Data</h2>
@@ -34,5 +50,6 @@
     </div>
   </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

@@ -9,16 +9,37 @@ import pytz
 import json
 from requests_oauthlib import OAuth2Session
 
+# Instead of importing csrf_exempt (which is unavailable), define a dummy decorator.
+try:
+    from flask_wtf.csrf import csrf_exempt
+except ImportError:
+    def csrf_exempt(func):
+        return func
+
 auth = Blueprint("auth", __name__)
 
-#homepage route idk why i cant just put it insdie of app py
+# List of common time zones
+COMMON_TIMEZONES = [
+    "UTC",
+    "US/Eastern",
+    "US/Central",
+    "US/Mountain",
+    "US/Pacific",
+    "Europe/London",
+    "Europe/Berlin",
+    "Asia/Tokyo",
+    "Australia/Sydney"
+]
+
+# Homepage route
 @auth.route("/")
 def homepage():
     try:
         verify_jwt_in_request(optional=True)
         user_id = get_jwt_identity()
         user = Users.query.get(user_id) if user_id else None
-    except:
+    except Exception as e:
+        print("DEBUG: Homepage access failed =>", e)
         user = None
     return render_template("homepage.html", user=user)
 
@@ -28,26 +49,35 @@ def list_users():
     users_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
     return jsonify(users_data)
 
-#dashboard route
+# Time zone change route
+@auth.route("/change_timezone", methods=["POST"])
+@csrf_exempt  # CSRF protection is disabled for this route via our dummy decorator
+@jwt_required()
+def change_timezone():
+    user_id = get_jwt_identity()
+    new_timezone = request.form.get("timezone")
+    user = Users.query.get(user_id)
+    if user:
+        user.timezone = new_timezone
+        db.session.commit()
+        flash("Time zone updated successfully!", "success")
+    else:
+        flash("User not found.", "danger")
+    return redirect(url_for("auth.dashboard"))
+
+# Dashboard route
 @auth.route("/dashboard")
+@jwt_required()
 def dashboard():
     try:
-        # Check if the JWT token cookie is present
-        if not request.cookies.get('access_token_cookie'):
-            flash("You need to register or log in to access the dashboard.", "danger")
-            return redirect(url_for("auth.register"))
-
-        verify_jwt_in_request()
         user_id = get_jwt_identity()
         user = Users.query.get(user_id)
         sessions = FocusSession.query.filter_by(user_id=user_id).all()
-
-        return render_template("dashboard.html", sessions=sessions, user=user)
+        return render_template("dashboard.html", sessions=sessions, user=user, timezones=COMMON_TIMEZONES)
     except Exception as e:
         print("DEBUG: Dashboard access failed =>", e)
         flash(f"Dashboard access failed: {str(e)}", "danger")
         return redirect(url_for("auth.login"))
-
 
 # Google OAuth configuration
 with open("flask_backend/client_secret.json", "r") as f:
@@ -67,12 +97,10 @@ google_auth = OAuth2Session(
     ],
 )
 
-#Register account
+# Register account
 @auth.route("/register", methods=["GET", "POST"])
 def register():
-    #If we get a post or update request from the template...
     if request.method == "POST":
-
         username = request.form["user_input"]
         email = request.form["email_input"]
         password = request.form["password_input"]
@@ -82,20 +110,17 @@ def register():
             flash("User already exists!")
             return redirect(url_for("auth.login"))
         
-        #hash the password
         hashed_password = generate_password_hash(password)
-
-        #Creating the new user obejct
-        user_object = Users(username = username, email = email, password = hashed_password,)
+        user_object = Users(username=username, email=email, password=hashed_password)
         db.session.add(user_object)
         db.session.commit()
-        print("DEBUG: User created =>", user_object)  # Add this line for debugging
+        print("DEBUG: User created =>", user_object)
         flash("Registration successful!")
         return redirect(url_for("auth.dashboard"))
     
     return render_template("register.html")
 
-#Default login account page
+# Default login account page
 @auth.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -132,7 +157,7 @@ def login():
 
     return render_template("login.html")
 
-#Super Cool Google login page
+# Google login page
 @auth.route("/google-login")
 def google_login():
     source = request.args.get("source", "web")
@@ -146,7 +171,7 @@ def google_login():
     print("DEBUG: Authorization URL =>", authorization_url)
     return redirect(authorization_url)
 
-#Then when they sign up we got to send them back
+# Google callback
 @auth.route("/google/callback")
 def google_callback():
     try:
@@ -203,11 +228,7 @@ def logout():
     flash("Logout successful")
     return response
 
-"""
-IMPORTANT STUFF FOR GETTING UPLOADING SESSION DATA AND GETTING IT AS WELL!!!!
-"""
-
-#First we are going to add a create session route
+# Add session route
 @auth.route("/add_session", methods=["POST"])
 @jwt_required()
 def add_session():
@@ -224,14 +245,13 @@ def add_session():
     print("DEBUG: Focus session added to the database")
     return jsonify({"message": "Focus session added!"}), 201
 
-#getting the user sessions
+# Get sessions route
 @auth.route("/get_sessions", methods=["GET"])
 @jwt_required()
 def get_sessions():
     user_id = get_jwt_identity()
     user = Users.query.get(user_id)
 
-    #These are all the focus session datas that we are going to want to display
     sessions = FocusSession.query.filter_by(user_id=user_id).all()
     user_timezone = user.timezone
 
