@@ -11,6 +11,14 @@ import os
 
 app = Flask(__name__)
 
+jwt = JWTManager(app)
+
+# Custom handler for missing or invalid JWT tokens
+@jwt.unauthorized_loader
+def custom_unauthorized_response(err):
+    # Redirect to the login page instead of returning a JSON error
+    return redirect(url_for("auth.login"))
+
 # For development, disable CSRF entirely. (Do not disable in production!)
 app.config["WTF_CSRF_ENABLED"] = False
 
@@ -33,7 +41,6 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # Initialize the database and JWT
 db.init_app(app)
-jwt = JWTManager(app)
 
 with app.app_context():
     db.create_all()

@@ -68,26 +68,29 @@ def chart_data():
 
     # Get the current time in the user's timezone.
     now_local = datetime.now(local_tz)
+    print(f"DEBUG: Current local time: {now_local}")
+
     # Determine the most recent Sunday.
-    # Python's weekday() gives Monday=0 ... Sunday=6.
-    # If today is Sunday (6), then days_to_subtract = 0; otherwise, subtract (weekday+1) days.
-    days_to_subtract = (now_local.weekday() + 1) % 7
+    days_to_subtract = now_local.weekday()  # Monday=0, ..., Sunday=6
     start_of_week = now_local - timedelta(days=days_to_subtract)
-    # Set time to the start of that day.
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+    print(f"DEBUG: Start of week (local): {start_of_week}")
+    print(f"DEBUG: End of week (local): {end_of_week}")
 
     # Build labels for each day of the week (in user timezone).
     labels = []
     for i in range(7):
         day = start_of_week + timedelta(days=i)
-        # You can format the day as you like.
         labels.append(day.strftime("%Y-%m-%d"))
 
-    # Convert the week boundaries back to UTC for querying,
-    # assuming your stored timestamps are in UTC.
+    # Convert the week boundaries back to UTC for querying.
     start_of_week_utc = start_of_week.astimezone(pytz.utc)
     end_of_week_utc = end_of_week.astimezone(pytz.utc)
+
+    print(f"DEBUG: Start of week (UTC): {start_of_week_utc}")
+    print(f"DEBUG: End of week (UTC): {end_of_week_utc}")
 
     # Query sessions for the current week.
     sessions = FocusSession.query.filter(
@@ -102,12 +105,14 @@ def chart_data():
     # For each session, convert its start_time to the user's timezone,
     # then add its duration (assumed to be in seconds) to the corresponding day.
     for s in sessions:
-        # Ensure the time is UTC-aware.
         utc_time = s.start_time
         if utc_time.tzinfo is None:
             utc_time = utc_time.replace(tzinfo=pytz.utc)
         local_time = utc_time.astimezone(local_tz)
-        day_str = local_time.strftime("%Y-%m-%d")
+        # Shift the day by one forward
+        shifted_day = local_time + timedelta(days=1)
+        day_str = shifted_day.strftime("%Y-%m-%d")
+        print(f"DEBUG: Session {s.id} UTC: {utc_time}, Local: {local_time}, Shifted Day: {day_str}")
         if day_str in durations_dict:
             durations_dict[day_str] += s.duration
 
@@ -115,7 +120,6 @@ def chart_data():
     durations = [durations_dict[label] for label in labels]
 
     return jsonify({"labels": labels, "data": durations})
-
 
 
 # Time zone change route

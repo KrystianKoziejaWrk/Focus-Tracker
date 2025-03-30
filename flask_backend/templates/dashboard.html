@@ -41,7 +41,7 @@
               <td>{{ loop.index }}</td>
               <td>{{ session.start_time }}</td>
               <td>{{ session.end_time }}</td>
-              <td>{{ session.duration }}</td>
+              <td>{{ session.duration / 60 }}</td>
             </tr>
             {% endfor %}
           </tbody>

@@ -10,6 +10,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import keyboard  # Global hotkey library
 import threading
 
+#Adding sound
+from playsound import playsound
+
 from api_handler import send_focus_data
 
 FLASK_API_URL = "http://127.0.0.1:5000/login"
@@ -231,11 +234,15 @@ class FocusTracker(QMainWindow):
     def toggle_focus(self):
         print("DEBUG: Global hotkey activated")
         if not self.focus_active:
+            # Play the start sound asynchronously
+            threading.Thread(target=playsound, args=('resources/start.mp3',), daemon=True).start()
             self.start_time = time.time()
             self.focus_active = True
             self.status_label.setText("Status: Focused (Press Ctrl+Shift+F to stop)")
             print("DEBUG: Focus tracking started")
         else:
+            # Play the end sound asynchronously
+            threading.Thread(target=playsound, args=('resources/end.mp3',), daemon=True).start()
             duration = int(time.time() - self.start_time)
             send_focus_data(duration, self.jwt_token)
             self.focus_active = False
