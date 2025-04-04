@@ -8,11 +8,14 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("DEBUG: Chart data received:", data);
 
             // Convert labels to day names
-            const labels = data.labels.map(dateStr => {
+            let labels = data.labels.map(dateStr => {
                 const date = new Date(dateStr);
                 console.log(`DEBUG: Converting ${dateStr} to ${date.toLocaleDateString('en-US', { weekday: 'long' })}`);
                 return date.toLocaleDateString('en-US', { weekday: 'long' });
             });
+
+            // Shift the labels array so Sunday is the first day
+            labels = labels.slice(1).concat(labels[0]); // Move the first label to the end
 
             // Convert durations from seconds to hours
             const durations = data.data.map(duration => {

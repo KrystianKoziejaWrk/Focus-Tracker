@@ -7,7 +7,14 @@ from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from flask_backend.models import db, Users, FocusSession
 from flask_backend.routes import auth
+from dotenv import load_dotenv
 import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+FLASK_API_URL = os.getenv("FLASK_API_URL", "http://127.0.0.1:5000")
+GOOGLE_LOGIN_URL = os.getenv("GOOGLE_LOGIN_URL", "http://127.0.0.1:5000/google-login?source=pyqt")
 
 app = Flask(__name__)
 
@@ -24,17 +31,16 @@ app.config["WTF_CSRF_ENABLED"] = False
 
 csrf = CSRFProtect(app)
 
-# Configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"  # SQLite for local testing
+# Use environment variables for configuration
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-# Security keys
-app.config["SECRET_KEY"] = "supersecretkey"
-app.config["JWT_SECRET_KEY"] = "jwtsecretkey"
 
 # JWT config
 app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]  # Accept JWT tokens from both cookies and headers
-app.config["JWT_COOKIE_SECURE"] = False  # Set to True in production with HTTPS
+app.config["JWT_COOKIE_SECURE"] = True  # Only send cookies over HTTPS
+app.config["JWT_COOKIE_HTTPONLY"] = True  # Prevent JavaScript access to cookies
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Disable JWT cookie CSRF protection for development
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'

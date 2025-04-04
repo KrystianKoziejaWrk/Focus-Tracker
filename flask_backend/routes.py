@@ -16,6 +16,16 @@ from datetime import datetime, timedelta, timezone
 import pytz
 import json
 from requests_oauthlib import OAuth2Session
+import bcrypt
+
+# Hash the password
+def hash_password(password):
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt)
+
+# Verify the password
+def verify_password(password, hashed_password):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
 
 # Define a dummy csrf_exempt decorator if not available
 try:
@@ -70,10 +80,16 @@ def chart_data():
     now_local = datetime.now(local_tz)
     print(f"DEBUG: Current local time: {now_local}")
 
-    # Determine the most recent Sunday.
-    days_to_subtract = now_local.weekday()  # Monday=0, ..., Sunday=6
-    start_of_week = now_local - timedelta(days=days_to_subtract)
+    # Adjust weekday so Sunday is 0, Monday is 1, ..., Saturday is 6
+    adjusted_weekday = now_local.weekday()  # Monday=0, ..., Sunday=6
+    adjusted_weekday = (adjusted_weekday + 1) % 7  # Shift so Sunday=0
+    print(f"DEBUG: Adjusted weekday (Sunday=0): {adjusted_weekday}")
+
+    # Determine the most recent Sunday (start of the week).
+    start_of_week = now_local - timedelta(days=adjusted_weekday)
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Determine the end of the week (Saturday).
     end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
     print(f"DEBUG: Start of week (local): {start_of_week}")
@@ -83,6 +99,7 @@ def chart_data():
     labels = []
     for i in range(7):
         day = start_of_week + timedelta(days=i)
+        print(f"DEBUG: Day being added: {day.weekday()}")
         labels.append(day.strftime("%Y-%m-%d"))
 
     # Convert the week boundaries back to UTC for querying.
@@ -109,10 +126,7 @@ def chart_data():
         if utc_time.tzinfo is None:
             utc_time = utc_time.replace(tzinfo=pytz.utc)
         local_time = utc_time.astimezone(local_tz)
-        # Shift the day by one forward
-        shifted_day = local_time + timedelta(days=1)
-        day_str = shifted_day.strftime("%Y-%m-%d")
-        print(f"DEBUG: Session {s.id} UTC: {utc_time}, Local: {local_time}, Shifted Day: {day_str}")
+        day_str = local_time.strftime("%Y-%m-%d")  # Map to the correct day
         if day_str in durations_dict:
             durations_dict[day_str] += s.duration
 
@@ -206,7 +220,7 @@ def register():
             flash("User already exists!")
             return redirect(url_for("auth.login"))
         
-        hashed_password = generate_password_hash(password)
+        hashed_password = hash_password(password)  # Use the new hashing function
         user_object = Users(username=username, email=email, password=hashed_password)
         db.session.add(user_object)
         db.session.commit()
@@ -220,36 +234,19 @@ def register():
 @auth.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.is_json:
-            data = request.get_json()
-            email = data.get("email")
-            password = data.get("password")
-            print(f"DEBUG: Received JSON login request with email: {email}")
-        else:
-            email = request.form["email_input"]
-            password = request.form["password_input"]
-            print(f"DEBUG: Received form login request with email: {email}")
+        email = request.form["email_input"]
+        password = request.form["password_input"]
 
         user = Users.query.filter_by(email=email).first()
-        if not user or not check_password_hash(user.password, password):
-            print("DEBUG: Invalid email or password")
-            if request.is_json:
-                return jsonify({"msg": "Invalid email or password"}), 401
-            else:
-                flash("Invalid email or password")
-                return redirect(url_for("auth.login"))
+        if not user or not verify_password(password, user.password):  # Use the new verification function
+            flash("Invalid email or password")
+            return redirect(url_for("auth.login"))
 
         access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
-
-        if request.is_json:
-            print("DEBUG: Login successful, returning JSON response")
-            return jsonify({"access_token": access_token})
-        else:
-            response = make_response(redirect(url_for("auth.dashboard")))
-            set_access_cookies(response, access_token)
-            print("DEBUG: JWT Token stored in cookie")
-            flash("Login successful!")
-            return response
+        response = make_response(redirect(url_for("auth.dashboard")))
+        set_access_cookies(response, access_token)
+        flash("Login successful!")
+        return response
 
     return render_template("login.html")
 
