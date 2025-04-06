@@ -1,3 +1,4 @@
+# flask_backend/routes.py
 from flask import Blueprint, request, jsonify, flash, render_template, redirect, url_for, session, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
@@ -17,6 +18,17 @@ import pytz
 import json
 from requests_oauthlib import OAuth2Session
 import bcrypt
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField
+from wtforms.validators import DataRequired, Email, Length
+from flask_limiter.util import get_remote_address
+# Import the limiter from the extensions module
+from flask_backend.extensions import limiter
+
+# Define a login form
+class LoginForm(FlaskForm):
+    email = StringField("Email", validators=[DataRequired(), Email()])
+    password = PasswordField("Password", validators=[DataRequired(), Length(min=6)])
 
 # Hash the password
 def hash_password(password):
@@ -81,8 +93,8 @@ def chart_data():
     print(f"DEBUG: Current local time: {now_local}")
 
     # Adjust weekday so Sunday is 0, Monday is 1, ..., Saturday is 6
-    adjusted_weekday = now_local.weekday()  # Monday=0, ..., Sunday=6
-    adjusted_weekday = (adjusted_weekday + 1) % 7  # Shift so Sunday=0
+    adjusted_weekday = now_local.weekday() # monday = 0 sunday = 6
+    adjusted_weekday = (adjusted_weekday + 1) % 7
     print(f"DEBUG: Adjusted weekday (Sunday=0): {adjusted_weekday}")
 
     # Determine the most recent Sunday (start of the week).
@@ -119,14 +131,13 @@ def chart_data():
     # Initialize a dictionary with each day as key and 0 duration.
     durations_dict = {label: 0 for label in labels}
 
-    # For each session, convert its start_time to the user's timezone,
-    # then add its duration (assumed to be in seconds) to the corresponding day.
+    # For each session, convert its start_time to the user's timezone and add its duration.
     for s in sessions:
         utc_time = s.start_time
         if utc_time.tzinfo is None:
             utc_time = utc_time.replace(tzinfo=pytz.utc)
         local_time = utc_time.astimezone(local_tz)
-        day_str = local_time.strftime("%Y-%m-%d")  # Map to the correct day
+        day_str = local_time.strftime("%Y-%m-%d")
         if day_str in durations_dict:
             durations_dict[day_str] += s.duration
 
@@ -135,8 +146,6 @@ def chart_data():
 
     return jsonify({"labels": labels, "data": durations})
 
-
-# Time zone change route
 @auth.route("/change_timezone", methods=["POST"])
 @csrf_exempt  # Disable CSRF protection for this route
 @jwt_required()
@@ -150,9 +159,8 @@ def change_timezone():
         flash("Time zone updated successfully!", "success")
     else:
         flash("User not found.", "danger")
-    return redirect(url_for("auth.dashboard"))
+    return redirect(url_for("auth. board"))
 
-# Dashboard route
 @auth.route("/dashboard")
 @jwt_required()
 def dashboard():
@@ -164,13 +172,11 @@ def dashboard():
         user_timezone = user.timezone if user and user.timezone else "UTC"
 
         def convert_to_local_time(utc_time):
-            # If the datetime is naive, assume it's in UTC.
             if utc_time.tzinfo is None:
                 utc_time = utc_time.replace(tzinfo=timezone.utc)
             local_tz = pytz.timezone(user_timezone)
             return utc_time.astimezone(local_tz)
 
-        # Build a list of sessions with converted times
         sessions_converted = []
         for s in sessions:
             local_time = convert_to_local_time(s.start_time)
@@ -187,7 +193,6 @@ def dashboard():
         print("DEBUG: Dashboard access failed =>", e)
         flash(f"Dashboard access failed: {str(e)}", "danger")
         return redirect(url_for("auth.login"))
-
 
 # Google OAuth configuration
 with open("flask_backend/client_secret.json", "r") as f:
@@ -207,7 +212,6 @@ google_auth = OAuth2Session(
     ],
 )
 
-# Register account
 @auth.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -220,7 +224,7 @@ def register():
             flash("User already exists!")
             return redirect(url_for("auth.login"))
         
-        hashed_password = hash_password(password)  # Use the new hashing function
+        hashed_password = hash_password(password)
         user_object = Users(username=username, email=email, password=hashed_password)
         db.session.add(user_object)
         db.session.commit()
@@ -230,15 +234,16 @@ def register():
     
     return render_template("register.html")
 
-# Default login account page
 @auth.route("/login", methods=["GET", "POST"])
+@csrf_exempt  # Disable CSRF protection for this route
+@limiter.limit("5 per minute")
 def login():
     if request.method == "POST":
         email = request.form["email_input"]
         password = request.form["password_input"]
 
         user = Users.query.filter_by(email=email).first()
-        if not user or not verify_password(password, user.password):  # Use the new verification function
+        if not user or not verify_password(password, user.password):
             flash("Invalid email or password")
             return redirect(url_for("auth.login"))
 
@@ -250,7 +255,6 @@ def login():
 
     return render_template("login.html")
 
-# Google login page
 @auth.route("/google-login")
 def google_login():
     source = request.args.get("source", "web")
@@ -264,7 +268,6 @@ def google_login():
     print("DEBUG: Authorization URL =>", authorization_url)
     return redirect(authorization_url)
 
-# Google callback
 @auth.route("/google/callback")
 def google_callback():
     try:
@@ -321,7 +324,6 @@ def logout():
     flash("Logout successful")
     return response
 
-# Place csrf_exempt as the outermost decorator for this API endpoint.
 @csrf_exempt
 @auth.route("/add_session", methods=["POST"])
 @jwt_required()
