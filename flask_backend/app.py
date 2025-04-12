@@ -33,7 +33,7 @@ def custom_unauthorized_response(err):
     return redirect(url_for("auth.login"))
 
 # For development, disable CSRF entirely (do not disable in production!)
-app.config["WTF_CSRF_ENABLED"] = False
+app.config["WTF_CSRF_ENABLED"] = True
 csrf = CSRFProtect(app)
 
 # Use environment variables for configuration
@@ -46,7 +46,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]  # Accept JWT tokens from both cookies and headers
 app.config["JWT_COOKIE_SECURE"] = True  # Only send cookies over HTTPS
 app.config["JWT_COOKIE_HTTPONLY"] = True  # Prevent JavaScript access to cookies
-app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Disable JWT cookie CSRF protection for development
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Disable CSRF protection for JWT cookies
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 

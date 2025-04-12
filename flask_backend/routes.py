@@ -37,6 +37,9 @@ def hash_password(password):
 
 # Verify the password
 def verify_password(password, hashed_password):
+    # Ensure the hashed password is in bytes
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
 
 # Define a dummy csrf_exempt decorator if not available
@@ -219,12 +222,14 @@ def register():
         email = request.form["email_input"]
         password = request.form["password_input"]
 
+        # Check if the user already exists
         user_check = Users.query.filter_by(email=email).first()
         if user_check:
             flash("User already exists!")
             return redirect(url_for("auth.login"))
         
-        hashed_password = hash_password(password)
+        # Hash the password before storing it
+        hashed_password = hash_password(password).decode('utf-8')  # Decode bytes to string
         user_object = Users(username=username, email=email, password=hashed_password)
         db.session.add(user_object)
         db.session.commit()
