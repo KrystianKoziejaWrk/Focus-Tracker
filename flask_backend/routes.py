@@ -167,15 +167,16 @@ def change_timezone():
     return redirect(url_for("auth. board"))
 
 @auth.route("/dashboard")
-@jwt_required()
+@jwt_required()  # Requires a valid JWT token
 def dashboard():
     try:
-        user_id = get_jwt_identity()
+        user_id = get_jwt_identity()  # Get the user ID from the JWT token
         user = Users.query.get(user_id)
         print("DEBUG: User timezone is now:", user.timezone)
         sessions = FocusSession.query.filter_by(user_id=user_id).all()
         user_timezone = user.timezone if user and user.timezone else "UTC"
 
+        # Convert session times to the user's timezone
         def convert_to_local_time(utc_time):
             if utc_time.tzinfo is None:
                 utc_time = utc_time.replace(tzinfo=timezone.utc)
@@ -286,7 +287,6 @@ def google_login():
 
 @auth.route("/google/callback")
 def google_callback():
-    print("DEBUG: /google/callback route hit")
     try:
         state = session.get("oauth_state")
         if not state:
@@ -326,7 +326,7 @@ def google_callback():
 
         if source != "pyqt":
             response = make_response(redirect(url_for("auth.dashboard")))
-            set_access_cookies(response, access_token)
+            set_access_cookies(response, access_token)  # Store JWT token in cookies
             print("DEBUG: JWT Token stored in cookie")
             flash("Login successful with Google!")
             return response
