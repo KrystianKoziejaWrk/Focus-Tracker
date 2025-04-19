@@ -273,6 +273,7 @@ def login():
 @auth.route("/google-login")
 def google_login():
     source = request.args.get("source", "web")
+    print(f"DEBUG: login_source from session => {source}")
     authorization_url, state = google_auth.authorization_url(
         "https://accounts.google.com/o/oauth2/auth",
         access_type="offline",
@@ -319,15 +320,17 @@ def google_callback():
         print("DEBUG: Access Token =>", access_token)
 
         source = session.get("login_source", "web")
-        if source == "pyqt":
-            print("DEBUG: Redirecting to PyQt application with access token")
-            return redirect(f"http://127.0.0.1:8000/callback?access_token={access_token}")
-        else:
+        print(f"DEBUG: login_source from session => {source}")
+
+        if source != "pyqt":
             response = make_response(redirect(url_for("auth.dashboard")))
             set_access_cookies(response, access_token)
             print("DEBUG: JWT Token stored in cookie")
             flash("Login successful with Google!")
             return response
+        else:
+            print("DEBUG: Redirecting to PyQt application with access token")
+            return redirect(f"http://127.0.0.1:8000/callback?access_token={access_token}")
     except Exception as e:
         print("DEBUG: Google login failed =>", e)
         return jsonify({"msg": f"Google login failed: {str(e)}"}), 401
