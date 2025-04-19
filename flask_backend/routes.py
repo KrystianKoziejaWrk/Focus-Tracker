@@ -24,6 +24,8 @@ from wtforms.validators import DataRequired, Email, Length
 from flask_limiter.util import get_remote_address
 # Import the limiter from the extensions module
 from flask_backend.extensions import limiter
+import base64
+import os
 
 # Define a login form
 class LoginForm(FlaskForm):
@@ -198,8 +200,11 @@ def dashboard():
         return redirect(url_for("auth.login"))
 
 # Google OAuth configuration
-with open("flask_backend/client_secret.json", "r") as f:
-    google_creds = json.load(f)
+encoded_json = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
+if encoded_json:
+    google_creds = json.loads(base64.b64decode(encoded_json).decode("utf-8"))
+else:
+    raise RuntimeError("GOOGLE_CLIENT_SECRET_JSON is not set")
 
 GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
 GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
