@@ -39,7 +39,18 @@ csrf = CSRFProtect(app)
 # Use environment variables for configuration
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
+import os
+
+# Fix Heroku's DATABASE_URL to be compatible with SQLAlchemy
+database_url = os.getenv("DATABASE_URL")
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    os.environ["DATABASE_URL"] = database_url
+
+# Existing database initialization code
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # JWT config
