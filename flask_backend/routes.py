@@ -208,7 +208,12 @@ else:
 
 GOOGLE_CLIENT_ID = google_creds["web"]["client_id"]
 GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
-REDIRECT_URI = google_creds["web"]["redirect_uris"][0]
+
+# Determine the environment and set the redirect URI
+if os.getenv("FLASK_ENV") == "production":
+    REDIRECT_URI = "https://learnhowyouwork.herokuapp.com/google/callback"
+else:
+    REDIRECT_URI = "http://127.0.0.1:5000/google/callback"
 
 google_auth = OAuth2Session(
     GOOGLE_CLIENT_ID,
