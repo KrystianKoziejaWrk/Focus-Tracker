@@ -212,7 +212,7 @@ GOOGLE_CLIENT_SECRET = google_creds["web"]["client_secret"]
 
 # Determine the environment and set the redirect URI
 if os.getenv("FLASK_ENV") == "production":
-    REDIRECT_URI = "https://learnhowyouwork.herokuapp.com/google/callback"
+    REDIRECT_URI = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google/callback"
 else:
     REDIRECT_URI = "http://127.0.0.1:5000/google/callback"
 
