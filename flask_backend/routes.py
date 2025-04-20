@@ -170,7 +170,7 @@ def change_timezone():
         flash("Time zone updated successfully!", "success")
     else:
         flash("User not found.", "danger")
-    return redirect(url_for("auth. board"))
+    return redirect(url_for("auth.dashboard"))
 
 @auth.route("/dashboard")
 @jwt_required()  # Requires a valid JWT token
