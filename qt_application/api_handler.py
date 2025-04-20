@@ -1,7 +1,7 @@
 import requests
 
 # Flask API endpoint (Update this with your actual deployed backend URL)
-FLASK_API_URL = "http://127.0.0.1:5000/add_session"
+FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/add_session"
 
 def send_focus_data(duration, jwt_token):
     """
@@ -15,7 +15,7 @@ def send_focus_data(duration, jwt_token):
         dict: API response.
     """
     headers = {
-        "Authorization": f"Bearer {jwt_token}", 
+        "Authorization": f"Bearer {jwt_token}",
         "Content-Type": "application/json"
     }
     

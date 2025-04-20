@@ -15,9 +15,9 @@ from playsound import playsound
 
 from api_handler import send_focus_data
 
-FLASK_API_URL = "http://127.0.0.1:5000/login"
-GOOGLE_LOGIN_URL = "http://127.0.0.1:5000/google-login?source=pyqt"
-GOOGLE_CALLBACK_URL = "http://127.0.0.1:5000/google/callback"
+FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/login"
+GOOGLE_LOGIN_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google-login?source=pyqt"
+GOOGLE_CALLBACK_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google/callback"
 
 def save_token(token):
     with open("token.json", "w") as f:
