@@ -26,6 +26,7 @@ from flask_limiter.util import get_remote_address
 from flask_backend.extensions import limiter
 import base64
 import os
+from flask_wtf.csrf import CSRFError
 
 # Define a login form
 class LoginForm(FlaskForm):
@@ -359,6 +360,17 @@ def logout():
 @auth.route("/add_session", methods=["POST"])
 @jwt_required()
 def add_session():
+    # Check if the request is from PyQt
+    if request.headers.get("X-Source") == "pyqt":
+        print("DEBUG: CSRF exemption applied for PyQt request")
+    else:
+        # Perform CSRF validation for non-PyQt requests
+        try:
+            csrf.protect()
+        except CSRFError as e:
+            print(f"DEBUG: CSRF validation failed: {e}")
+            return jsonify({"msg": "CSRF token is missing or invalid"}), 400
+
     user_id = get_jwt_identity()
     data = request.get_json()
     print("DEBUG: Received JSON data in /add_session:", data)

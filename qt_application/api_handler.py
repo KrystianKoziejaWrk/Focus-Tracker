@@ -34,12 +34,13 @@ def send_focus_data(duration, jwt_token):
     """
     headers = {
         "Authorization": f"Bearer {jwt_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Source": "pyqt"  # Add this header to identify PyQt requests
     }
 
     # Fetch the CSRF token
     csrf_token = get_csrf_token()
-    if csrf_token:
+    if (csrf_token):
         headers["X-CSRFToken"] = csrf_token  # Add the CSRF token to the headers
 
     payload = {"duration": duration}
