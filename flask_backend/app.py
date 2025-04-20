@@ -33,7 +33,7 @@ def custom_unauthorized_response(err):
     return redirect(url_for("auth.login"))
 
 # Enable CSRF protection
-app.config["WTF_CSRF_ENABLED"] = True
+app.config["WTF_CSRF_ENABLED"] = False
 csrf = CSRFProtect(app)
 
 # Use environment variables for configuration
