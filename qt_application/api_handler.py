@@ -1,4 +1,5 @@
 import requests
+from flask_wtf.csrf import generate_csrf
 
 # Flask API endpoints
 FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/add_session"
