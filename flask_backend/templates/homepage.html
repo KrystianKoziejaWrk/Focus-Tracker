@@ -85,6 +85,8 @@
     </nav>
     <!-- END NAVBAR -->
 
+    
+
     <!-- HERO/COVER SECTION -->
     <section class="hero">
       <div class="container hero-content">
@@ -94,10 +96,31 @@
           sessions, visualize your improvements, and achieve your goals, one
           session at a time.
         </p>
+        
+        <!-- STATISTICS SECTION -->
+        <section class="statistics py-5 bg-light">
+          <div class="container text-center">
+            <h2 class="mb-4">Platform Statistics</h2>
+            <div class="row">
+              <div class="col-md-6">
+                <h3>{{ total_users }}</h3>
+                <p>Total Users</p>
+              </div>
+              <div class="col-md-6">
+                <h3>{{ total_entries }}</h3>
+                <p>Total Focus Entries</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- END STATISTICS -->
+
         <a href="#" class="btn btn-lg btn-primary">Download App</a>
       </div>
     </section>
     <!-- END HERO -->
+
+
 
     <!-- ABOUT SECTION -->
     <section class="about-section">
@@ -133,23 +156,7 @@
     </section>
     <!-- END ABOUT -->
 
-    <!-- STATISTICS SECTION -->
-    <section class="statistics py-5 bg-light">
-      <div class="container text-center">
-        <h2 class="mb-4">Platform Statistics</h2>
-        <div class="row">
-          <div class="col-md-6">
-            <h3>{{ total_users }}</h3>
-            <p>Total Users</p>
-          </div>
-          <div class="col-md-6">
-            <h3>{{ total_entries }}</h3>
-            <p>Total Focus Entries</p>
-          </div>
-        </div>
-      </div>
-    </section>
-    <!-- END STATISTICS -->
+    
 
     <!-- FOOTER -->
     <footer class="bg-light text-dark py-3">
