@@ -314,6 +314,7 @@ def google_callback():
         email = user_info["email"]
         username = user_info["name"]
 
+        # Check if the user exists or create a new one
         user = Users.query.filter_by(email=email).first()
         if not user:
             user = Users(username=username, email=email)
@@ -321,6 +322,7 @@ def google_callback():
             db.session.commit()
             print("DEBUG: New user created =>", user)
 
+        # Generate access token for the user
         access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
         print("DEBUG: Access Token =>", access_token)
 
