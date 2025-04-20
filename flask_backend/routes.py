@@ -76,7 +76,13 @@ def homepage():
     except Exception as e:
         print("DEBUG: Homepage access failed =>", e)
         user = None
-    return render_template("homepage.html", user=user)
+
+    # Count total users and focus session entries
+    total_users = Users.query.count()
+    total_entries = FocusSession.query.count()
+    print(f"DEBUG: Total users: {total_users}, Total entries: {total_entries}")
+
+    return render_template("homepage.html", user=user, total_users=total_users, total_entries=total_entries)
 
 @auth.route("/list_users")
 def list_users():
