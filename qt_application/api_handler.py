@@ -1,7 +1,7 @@
 import requests
 
 # Flask API endpoints
-FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/add_session"
+FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/add_session?source=pyqt"
 CSRF_TOKEN_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/get_csrf_token"
 
 def get_csrf_token():

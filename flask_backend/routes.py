@@ -360,11 +360,9 @@ def logout():
 @auth.route("/add_session", methods=["POST"])
 @jwt_required()
 def add_session():
-    # Check if the request is from PyQt
-    if request.headers.get("X-Source") == "pyqt":
+    if request.args.get("source") == "pyqt":
         print("DEBUG: CSRF exemption applied for PyQt request")
     else:
-        # Perform CSRF validation for non-PyQt requests
         try:
             csrf.protect()
         except CSRFError as e:
