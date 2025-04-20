@@ -401,8 +401,3 @@ def get_csrf_token():
     csrf_token = generate_csrf()
     return jsonify({"csrf_token": csrf_token})
 
-headers = {
-    "Authorization": f"Bearer {jwt_token}",
-    "Content-Type": "application/json",
-    "X-CSRFToken": csrf_token  # Include the CSRF token
-}
