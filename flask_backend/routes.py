@@ -281,6 +281,8 @@ def google_login():
         prompt="consent",
     )
     session["oauth_state"] = state
+    print(f"DEBUG: oauth_state set in session => {state}")
+    print(f"DEBUG: oauth_state from session => {session.get('oauth_state')}")
     session["login_source"] = source
     print("DEBUG: Authorization URL =>", authorization_url)
     return redirect(authorization_url)
