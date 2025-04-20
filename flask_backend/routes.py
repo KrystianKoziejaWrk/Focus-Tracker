@@ -355,7 +355,7 @@ def logout():
     flash("Logout successful")
     return response
 
-@csrf_exempt  # Disable CSRF protection for this route
+@csrf_exempt
 @auth.route("/add_session", methods=["POST"])
 @jwt_required()
 def add_session():
@@ -395,3 +395,8 @@ def get_sessions():
         for s in sessions
     ]
     return jsonify(sessions_data)
+
+@auth.route("/get_csrf_token", methods=["GET"])
+def get_csrf_token():
+    csrf_token = generate_csrf()
+    return jsonify({"csrf_token": csrf_token})

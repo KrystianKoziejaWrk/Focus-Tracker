@@ -32,8 +32,8 @@ jwt = JWTManager(app)
 def custom_unauthorized_response(err):
     return redirect(url_for("auth.login"))
 
-# For development, disable CSRF entirely (do not disable in production!)
-app.config["WTF_CSRF_ENABLED"] = False
+# Enable CSRF protection
+app.config["WTF_CSRF_ENABLED"] = True
 csrf = CSRFProtect(app)
 
 # Use environment variables for configuration
