@@ -287,6 +287,7 @@ def google_login():
 
 @auth.route("/google/callback")
 def google_callback():
+    print("DEBUG: /google/callback route hit")
     try:
         state = session.get("oauth_state")
         if not state:
