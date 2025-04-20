@@ -32,18 +32,18 @@
       }
 
       .statistics {
-        background: #333; /* Match hero background color */
-        color: #fff; /* Match text color with the hero section */
-        padding: 50px 0; /* Keep the padding */
-        text-shadow: 0 0.05rem 0.1rem rgba(0, 0, 0, 0.5); /* Match text shadow */
+        background: #333;
+        color: #fff;
+        padding: 50px 0;
+        text-shadow: 0 0.05rem 0.1rem rgba(0, 0, 0, 0.5);
       }
 
       .statistics h2 {
-        color: #fff; /* Ensure the heading matches the surrounding text */
+        color: #fff;
       }
 
       .statistics .row div {
-        border: none; /* Remove any border around the boxes */
+        border: none;
       }
     </style>
   </head>
@@ -89,8 +89,6 @@
     </nav>
     <!-- END NAVBAR -->
 
-    
-
     <!-- HERO/COVER SECTION -->
     <section class="hero">
       <div class="container hero-content">
@@ -100,34 +98,31 @@
           sessions, visualize your improvements, and achieve your goals, one
           session at a time.
         </p>
-
-        <!-- STATISTICS SECTION -->
-        <section class="statistics py-5 bg-light">
-          <div class="container text-center">
-            <h2 class="mb-4">Current Platform Stats:</h2>
-            <div class="row">
-              <div class="col-md-6">
-                <h3>{{ total_users }}</h3>
-                <p>Total Users</p>
-              </div>
-              <div class="col-md-6">
-                <h3>{{ total_entries }}</h3>
-                <p>Total Focus Entries</p>
-              </div>
-            </div>
-          </div>
-        </section>
-        <!-- END STATISTICS -->
-
         <a href="#" class="btn btn-lg btn-primary">Download App</a>
       </div>
     </section>
     <!-- END HERO -->
 
-
+    <!-- STATISTICS SECTION -->
+    <section class="statistics">
+      <div class="container text-center">
+        <h2 class="mb-4">Current Platform Stats:</h2>
+        <div class="row">
+          <div class="col-md-6">
+            <h3>{{ total_users }}</h3>
+            <p>Total Users</p>
+          </div>
+          <div class="col-md-6">
+            <h3>{{ total_entries }}</h3>
+            <p>Total Focus Entries</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- END STATISTICS -->
 
     <!-- ABOUT SECTION -->
-    <section class="about-section">
+    <section class="about-section pt-5 mt-5">
       <div class="container">
         <div class="row justify-content-center">
           <div class="col-md-8 text-center">
@@ -135,47 +130,5 @@
             <p>
               Learn How You Work was inspired by many sources, my own procrastination being the one of the main driving forces.
               I wanted to create a tool that would help me understand how I work, and how I can work better.
-              I hear myself and others say "Oh I litteraly studied all day" or "Im too busy, I'm Just working all the time"
-              Personally I dbout it. My solution was to create this to actually gather information about how much
-              actual focused work is being done. The goal is to work efficiantly, saving time for other things in life.
-              
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="about-creator">
-      <div class="container">
-        <div class="row justify-content-center">
-          <div class="col-md-8 text-center">
-            <h2 class="mb-4">About the Creator</h2>
-            <p>
-              Hello! my name is Krystian (Bobo) Kozieja and I'm currently studying Computer Engineering at UIUC!
-                
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-    <!-- END ABOUT -->
-
-    
-
-    <!-- FOOTER -->
-    <footer class="bg-light text-dark py-3">
-      <div class="container text-center">
-        <span>
-          &copy; 2023 Focus Tracker. Built with
-          <a href="https://getbootstrap.com/">Bootstrap</a>.
-        </span>
-      </div>
-    </footer>
-    <!-- END FOOTER -->
-
-    <!-- Bootstrap 5 JS (Bundle includes Popper) -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    ></script>
-  </body>
-</html>
+              I hear myself and others say "Oh I literally studied all day" or "I'm too busy, I'm just working all the time."
+              Personally I doubt it. My solution was to create this to actually
