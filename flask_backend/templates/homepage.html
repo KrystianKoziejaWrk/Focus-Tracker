@@ -18,27 +18,30 @@
       /* Custom homepage styles */
       .hero {
         background: #333 url('https://images.unsplash.com/photo-1516542076529-1ea3854896f0') center/cover no-repeat;
-        min-height: 80vh;
+        min-height: 60vh; /* Reduced height */
         color: #fff;
         display: flex;
         align-items: center;
+        justify-content: center; /* Center content vertically */
         text-shadow: 0 0.05rem 0.1rem rgba(0, 0, 0, 0.5);
+        padding-top: 2rem; /* Add some padding to the top */
+        padding-bottom: 2rem; /* Add some padding to the bottom */
       }
 
       .hero-content {
         max-width: 650px;
         margin: auto;
         text-align: center;
-        margin-bottom: 2rem; /* NEW: reduces vertical space below hero content */
       }
 
       .statistics {
         background: #333;
         color: #fff;
-        padding: 30px 0; /* slightly reduced */
-        margin-top: -30px; /* NEW: closes the gap between hero and statistics */
+        padding: 30px 0;
+        margin-top: -30px;
         text-shadow: 0 0.05rem 0.1rem rgba(0, 0, 0, 0.5);
       }
+
       .statistics h2 {
         color: #fff;
       }
