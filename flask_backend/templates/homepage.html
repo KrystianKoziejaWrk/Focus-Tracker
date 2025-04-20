@@ -40,7 +40,19 @@
         padding: 60px 0;
       }
 
+      .statistics {
+        background: none; /* Remove background color */
+        padding: 0; /* Remove padding */
+        color: #fff; /* Match text color with the hero section */
+      }
 
+      .statistics h2 {
+        color: #fff; /* Ensure the heading matches the surrounding text */
+      }
+
+      .statistics .row div {
+        border: none; /* Remove any border around the boxes */
+      }
     </style>
   </head>
   <body>
@@ -96,11 +108,11 @@
           sessions, visualize your improvements, and achieve your goals, one
           session at a time.
         </p>
-        
+
         <!-- STATISTICS SECTION -->
         <section class="statistics py-5 bg-light">
           <div class="container text-center">
-            <h2 class="mb-4">Platform Statistics</h2>
+            <h2 class="mb-4">Current Platform Stats:</h2>
             <div class="row">
               <div class="col-md-6">
                 <h3>{{ total_users }}</h3>
