@@ -1,5 +1,4 @@
 import requests
-from flask_wtf.csrf import generate_csrf
 
 # Flask API endpoints
 FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/add_session"
@@ -40,7 +39,7 @@ def send_focus_data(duration, jwt_token):
 
     # Fetch the CSRF token
     csrf_token = get_csrf_token()
-    if (csrf_token):
+    if csrf_token:
         headers["X-CSRFToken"] = csrf_token  # Add the CSRF token to the headers
 
     payload = {"duration": duration}
