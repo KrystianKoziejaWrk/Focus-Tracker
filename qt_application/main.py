@@ -46,7 +46,7 @@ class HttpServerThread(QThread):
     def run(self):
         server_address = ('', self.port)
         self.server = HTTPServer(server_address, self.handler_class)
-        print(f"DEBUG: HTTP Server thread running on port {self.port}")
+        print(f"DEBUG: HTTP Server running on port {self.port}")
         self.server.serve_forever()
 
     def shutdown(self):
@@ -123,7 +123,7 @@ class LoginWindow(QMainWindow):
 
     def start_local_server(self):
         print("DEBUG: Starting local HTTP server")
-        self.http_server_thread = HttpServerThread()
+        self.http_server_thread = HttpServerThread(LoginWindow.RequestHandler)
         self.http_server_thread.start()
 
     def shutdown_http_server(self):
@@ -139,13 +139,7 @@ class LoginWindow(QMainWindow):
             if self.path.startswith("/callback"):
                 if "?" in self.path:
                     query = self.path.split("?", 1)[1]
-                    try:
-                        params = dict(qc.split("=") for qc in query.split("&"))
-                        print("DEBUG: Parsed query parameters:", params)
-                    except Exception as e:
-                        print("DEBUG: Error parsing query params:", e)
-                        self.send_error(400, "Bad Request")
-                        return
+                    params = dict(qc.split("=") for qc in query.split("&"))
                     jwt_token = params.get("access_token")
                     if jwt_token:
                         self.send_response(200)
@@ -154,10 +148,8 @@ class LoginWindow(QMainWindow):
                         self.wfile.write(b"Login successful! You can close this window.")
                         self.app.token_received.emit(jwt_token)
                     else:
-                        print("DEBUG: access_token not found in query parameters")
                         self.send_error(400, "Missing access_token")
                 else:
-                    print("DEBUG: No query parameters found in callback URL")
                     self.send_error(400, "No query parameters provided")
             elif self.path.startswith("/favicon.ico"):
                 self.send_error(404)
