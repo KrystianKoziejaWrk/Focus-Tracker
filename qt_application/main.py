@@ -122,9 +122,8 @@ class LoginWindow(QMainWindow):
         self.start_local_server()
 
     def start_local_server(self):
-        print("DEBUG: Starting HTTP server thread")
-        self.http_server_thread = HttpServerThread(self.RequestHandler, port=8000)
-        self.RequestHandler.app = self  # Pass self to RequestHandler
+        print("DEBUG: Starting local HTTP server")
+        self.http_server_thread = HttpServerThread()
         self.http_server_thread.start()
 
     def shutdown_http_server(self):
@@ -151,14 +150,9 @@ class LoginWindow(QMainWindow):
                     if jwt_token:
                         self.send_response(200)
                         self.send_header("Content-type", "text/html")
-                        self.send_header("Connection", "close")
                         self.end_headers()
                         self.wfile.write(b"Login successful! You can close this window.")
-                        self.wfile.flush()
-                        print(f"DEBUG: JWT token received in RequestHandler: {jwt_token}")
-                        print("DEBUG: Emitting token_received signal")
                         self.app.token_received.emit(jwt_token)
-                        QTimer.singleShot(50, self.app.shutdown_http_server)
                     else:
                         print("DEBUG: access_token not found in query parameters")
                         self.send_error(400, "Missing access_token")
