@@ -233,6 +233,9 @@ google_auth = OAuth2Session(
     ],
 )
 
+# Assign google_auth to google
+google = google_auth
+
 @auth.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -298,7 +301,11 @@ def google_login():
 def google_callback():
     try:
         # Exchange the authorization code for an access token
-        token = google.authorize_access_token()
+        token = google.fetch_token(
+            "https://oauth2.googleapis.com/token",
+            authorization_response=request.url,
+            client_secret=GOOGLE_CLIENT_SECRET
+        )
         access_token = token.get("access_token")
         source = session.get("login_source", "web")
         if source == "pyqt":
