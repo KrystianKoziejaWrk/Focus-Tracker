@@ -10,6 +10,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import keyboard  # Global hotkey library
 import threading
 
+
+
+
 #Adding sound
 from playsound import playsound
 
@@ -30,12 +33,12 @@ GOOGLE_LOGIN_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google-lo
 GOOGLE_CALLBACK_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google/callback"
 
 def save_token(token):
-    with open("token.json", "w") as f:
+    with open(resource_path("token.json"), "w") as f:
         json.dump({"jwt_token": token}, f)
 
 def load_token():
     try:
-        with open("token.json", "r") as f:
+        with open(resource_path("token.json"), "r") as f:
             data = json.load(f)
             return data.get("jwt_token")
     except FileNotFoundError:
@@ -128,8 +131,8 @@ class LoginWindow(QMainWindow):
 
     def google_login(self):
         print("DEBUG: Opening Google login URL")
-        webbrowser.open(GOOGLE_LOGIN_URL)
         self.start_local_server()
+        webbrowser.open(GOOGLE_LOGIN_URL)
 
     def start_local_server(self):
         print("DEBUG: Starting HTTP server thread")
