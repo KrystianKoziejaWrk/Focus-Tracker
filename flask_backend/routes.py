@@ -233,9 +233,6 @@ google_auth = OAuth2Session(
     ],
 )
 
-# Assign google_auth to google
-google = google_auth
-
 @auth.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -299,23 +296,55 @@ def google_login():
 
 @auth.route("/google/callback")
 def google_callback():
+    print("DEBUG: /google/callback route hit")
     try:
-        # Exchange the authorization code for an access token
+        state = session.get("oauth_state")
+        if not state:
+            print("DEBUG: State missing from session")
+            return jsonify({"msg": "State missing from session"}), 400
+
+        google = OAuth2Session(
+            GOOGLE_CLIENT_ID,
+            redirect_uri=REDIRECT_URI,
+            state=state
+        )
         token = google.fetch_token(
             "https://oauth2.googleapis.com/token",
+            client_secret=GOOGLE_CLIENT_SECRET,
             authorization_response=request.url,
-            client_secret=GOOGLE_CLIENT_SECRET
         )
-        access_token = token.get("access_token")
+        print("DEBUG: Token =>", token)
+
+        user_info = google.get("https://www.googleapis.com/oauth2/v3/userinfo").json()
+        print("DEBUG: User Info =>", user_info)
+
+        email = user_info["email"]
+        username = user_info["name"]
+
+        # Check if the user exists or create a new one
+        user = Users.query.filter_by(email=email).first()
+        if not user:
+            user = Users(username=username, email=email)
+            db.session.add(user)
+            db.session.commit()
+            print("DEBUG: New user created =>", user)
+
+        # Generate access token for the user
+        access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=7))
+        print("DEBUG: Access Token =>", access_token)
+
         source = session.get("login_source", "web")
-        if source == "pyqt":
+        print(f"DEBUG: login_source from session => {source}")
+
+        if source != "pyqt":
+            response = make_response(redirect(url_for("auth.dashboard")))
+            set_access_cookies(response, access_token)  # Store JWT token in cookies
+            print("DEBUG: JWT Token stored in cookie")
+            flash("Login successful with Google!")
+            return response
+        else:
             print("DEBUG: Redirecting to PyQt application with access token")
             return redirect(f"http://127.0.0.1:8000/callback?access_token={access_token}")
-        else:
-            # Handle web login
-            response = make_response(redirect(url_for("auth.dashboard")))
-            set_access_cookies(response, access_token)
-            return response
     except Exception as e:
         print("DEBUG: Google login failed =>", e)
         return jsonify({"msg": f"Google login failed: {str(e)}"}), 401
@@ -384,4 +413,3 @@ def get_sessions():
 def get_csrf_token():
     csrf_token = generate_csrf()
     return jsonify({"csrf_token": csrf_token})
-
