@@ -140,7 +140,7 @@ class LoginWindow(QMainWindow):
                 if "?" in self.path:
                     query = self.path.split("?", 1)[1]
                     params = dict(qc.split("=") for qc in query.split("&"))
-                    jwt_token = params.get("access_token")
+                    jwt_token = params.get("access_token")  # This will now be the ID token
                     if jwt_token:
                         self.send_response(200)
                         self.send_header("Content-type", "text/html")
