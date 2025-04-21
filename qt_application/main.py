@@ -15,6 +15,16 @@ from playsound import playsound
 
 from api_handler import send_focus_data
 
+import os
+import sys
+
+def resource_path(relative_path):
+    """Get the absolute path to a resource, works for dev and PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        # Running from a PyInstaller bundle
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
 FLASK_API_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/login"
 GOOGLE_LOGIN_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google-login?source=pyqt"
 GOOGLE_CALLBACK_URL = "https://learnhowyouwork-91f5c3d6eadf.herokuapp.com/google/callback"
@@ -46,7 +56,7 @@ class HttpServerThread(QThread):
     def run(self):
         server_address = ('', self.port)
         self.server = HTTPServer(server_address, self.handler_class)
-        print(f"DEBUG: HTTP Server running on port {self.port}")
+        print(f"DEBUG: HTTP Server thread running on port {self.port}")
         self.server.serve_forever()
 
     def shutdown(self):
@@ -122,8 +132,9 @@ class LoginWindow(QMainWindow):
         self.start_local_server()
 
     def start_local_server(self):
-        print("DEBUG: Starting local HTTP server")
-        self.http_server_thread = HttpServerThread(LoginWindow.RequestHandler)
+        print("DEBUG: Starting HTTP server thread")
+        self.http_server_thread = HttpServerThread(self.RequestHandler, port=8000)
+        self.RequestHandler.app = self  # Pass self to RequestHandler
         self.http_server_thread.start()
 
     def shutdown_http_server(self):
@@ -139,17 +150,30 @@ class LoginWindow(QMainWindow):
             if self.path.startswith("/callback"):
                 if "?" in self.path:
                     query = self.path.split("?", 1)[1]
-                    params = dict(qc.split("=") for qc in query.split("&"))
-                    jwt_token = params.get("access_token")  # This will now be the ID token
+                    try:
+                        params = dict(qc.split("=") for qc in query.split("&"))
+                        print("DEBUG: Parsed query parameters:", params)
+                    except Exception as e:
+                        print("DEBUG: Error parsing query params:", e)
+                        self.send_error(400, "Bad Request")
+                        return
+                    jwt_token = params.get("access_token")
                     if jwt_token:
                         self.send_response(200)
                         self.send_header("Content-type", "text/html")
+                        self.send_header("Connection", "close")
                         self.end_headers()
                         self.wfile.write(b"Login successful! You can close this window.")
+                        self.wfile.flush()
+                        print(f"DEBUG: JWT token received in RequestHandler: {jwt_token}")
+                        print("DEBUG: Emitting token_received signal")
                         self.app.token_received.emit(jwt_token)
+                        QTimer.singleShot(50, self.app.shutdown_http_server)
                     else:
+                        print("DEBUG: access_token not found in query parameters")
                         self.send_error(400, "Missing access_token")
                 else:
+                    print("DEBUG: No query parameters found in callback URL")
                     self.send_error(400, "No query parameters provided")
             elif self.path.startswith("/favicon.ico"):
                 self.send_error(404)
