@@ -261,7 +261,7 @@ def register():
 # on other os!
 @auth.route("/webtracker")
 def focus_tracker():
-    return render_template("focus_tracker.html")
+    return render_template("webtracker.html")
 
 @auth.route("/login", methods=["GET", "POST"])
 @csrf_exempt  # Disable CSRF protection for this route
