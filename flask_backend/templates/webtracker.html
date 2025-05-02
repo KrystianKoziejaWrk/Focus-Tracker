@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container text-center mt-5">
+  <h1>Focus Tracker</h1>
+  <div id="focus-state" class="focus-box focused">
+    <p id="focus-text" class="text-white">Focused</p>
+  </div>
+  <p class="mt-3">Press <strong>Ctrl + Shift + F</strong> to toggle the focus state.</p>
+</div>
+
+<style>
+  .focus-box {
+    width: 300px;
+    height: 150px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  .focused {
+    background-color: green;
+  }
+  .not-tracking {
+    background-color: red;
+  }
+</style>
+
+<script>
+  document.addEventListener("keydown", function (event) {
+    // Check if Ctrl + Shift + F is pressed
+    if (event.ctrlKey && event.shiftKey && event.key === "F") {
+      const focusBox = document.getElementById("focus-state");
+      const focusText = document.getElementById("focus-text");
+
+      // Toggle the state
+      if (focusBox.classList.contains("focused")) {
+        focusBox.classList.remove("focused");
+        focusBox.classList.add("not-tracking");
+        focusText.textContent = "Not Tracking";
+      } else {
+        focusBox.classList.remove("not-tracking");
+        focusBox.classList.add("focused");
+        focusText.textContent = "Focused";
+      }
+    }
+  });
+</script>
+{% endblock %}
