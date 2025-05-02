@@ -259,7 +259,7 @@ def register():
 
 # adding the website version for tracking so we can actually use it
 # on other os!
-@auth.route("/focus-tracker")
+@auth.route("/webtracker")
 def focus_tracker():
     return render_template("focus_tracker.html")
 
