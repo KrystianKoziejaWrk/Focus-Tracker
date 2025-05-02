@@ -231,7 +231,7 @@ google_auth = OAuth2Session(
         "https://www.googleapis.com/auth/userinfo.email",
         "openid"
     ],
-)
+)  
 
 @auth.route("/register", methods=["GET", "POST"])
 def register():
@@ -256,6 +256,12 @@ def register():
         return redirect(url_for("auth.dashboard"))
     
     return render_template("register.html")
+
+# adding the website version for tracking so we can actually use it
+# on other os!
+@auth.route("/focus-tracker")
+def focus_tracker():
+    return render_template("focus_tracker.html")
 
 @auth.route("/login", methods=["GET", "POST"])
 @csrf_exempt  # Disable CSRF protection for this route
