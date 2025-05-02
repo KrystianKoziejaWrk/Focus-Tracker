@@ -259,9 +259,7 @@ def register():
 
 # adding the website version for tracking so we can actually use it
 # on other os!
-@auth.route("/webtracker")
-def focus_tracker():
-    return render_template("webtracker.html")
+
 
 @auth.route("/login", methods=["GET", "POST"])
 @csrf_exempt  # Disable CSRF protection for this route
