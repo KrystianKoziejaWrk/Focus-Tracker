@@ -28,13 +28,12 @@ import base64
 import os
 from flask_wtf.csrf import CSRFError
 
-"""
 #Focus Route logic
 @auth.route("/focus")
 @jwt_required()
 def focus_page():
     return render_template("focus.html")
-"""
+
 
 
 
