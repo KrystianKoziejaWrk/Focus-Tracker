@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="container mt-4">
+    <h1>Focus Tracker</h1>
+    <p>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to toggle focus mode.</p>
+    <div id="focus-status" class="fs-4 text-danger">Not Focused</div>
+  </div>
+
+  <!-- expose the POST URL to JS -->
+  <script>
+    const ADD_SESSION_URL = "{{ url_for('auth.add_session') }}";
+  </script>
+  <script src="{{ url_for('static', filename='js/focus.js') }}"></script>
+{% endblock %}
