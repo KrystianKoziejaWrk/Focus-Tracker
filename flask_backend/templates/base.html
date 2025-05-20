@@ -31,6 +31,7 @@
         <!-- Collapsible Nav Section -->
         <div class="collapse navbar-collapse justify-content-end" id="topNav">
           <ul class="navbar-nav">
+            {% block focus_block %}{% endblock %}
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('auth.focus_page') }}">Web Tracker</a>
             </li>

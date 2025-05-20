@@ -1,4 +1,11 @@
 {% extends "base.html" %}
+
+{% block focus_block %}
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('auth.dashboard') }}">Dashboard</a>
+    </li>
+{% endblock %}
+
 {% block content %}
   <div class="container mt-4">
     <h1>Focus Tracker</h1>
@@ -12,3 +19,5 @@
   </script>
   <script src="{{ url_for('static', filename='js/focus.js') }}"></script>
 {% endblock %}
+
+
