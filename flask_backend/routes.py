@@ -107,67 +107,43 @@ def list_users():
 def chart_data():
     user_id = get_jwt_identity()
     user = Users.query.get(user_id)
-    # Use user's timezone; default to UTC if not set.
     user_timezone = user.timezone if user and user.timezone else "UTC"
     local_tz = pytz.timezone(user_timezone)
 
-    # Get the current time in the user's timezone.
     now_local = datetime.now(local_tz)
-    print(f"DEBUG: Current local time: {now_local}")
-
-    # Adjust weekday so Sunday is 0, Monday is 1, ..., Saturday is 6
-    adjusted_weekday = now_local.weekday() # monday = 0 sunday = 6
-    adjusted_weekday = (adjusted_weekday + 1) % 7
-    print(f"DEBUG: Adjusted weekday (Sunday=0): {adjusted_weekday}")
-
-    # Determine the most recent Sunday (start of the week).
+    adjusted_weekday = (now_local.weekday() + 1) % 7
     start_of_week = now_local - timedelta(days=adjusted_weekday)
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    # Determine the end of the week (Saturday).
     end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
-    print(f"DEBUG: Start of week (local): {start_of_week}")
-    print(f"DEBUG: End of week (local): {end_of_week}")
-
-    # Build labels for each day of the week (in user timezone).
-    labels = []
-    for i in range(7):
-        day = start_of_week + timedelta(days=i)
-        print(f"DEBUG: Day being added: {day.weekday()}")
-        labels.append(day.strftime("%Y-%m-%d"))
-
-    # Convert the week boundaries back to UTC for querying.
     start_of_week_utc = start_of_week.astimezone(pytz.utc)
     end_of_week_utc = end_of_week.astimezone(pytz.utc)
 
-    print(f"DEBUG: Start of week (UTC): {start_of_week_utc}")
-    print(f"DEBUG: End of week (UTC): {end_of_week_utc}")
-
-    # Query sessions for the current week.
     sessions = FocusSession.query.filter(
         FocusSession.user_id == user_id,
         FocusSession.start_time >= start_of_week_utc,
         FocusSession.start_time <= end_of_week_utc
     ).all()
 
-    # Initialize a dictionary with each day as key and 0 duration.
-    durations_dict = {label: 0 for label in labels}
+    # Calculate total duration and average focus time
+    total_duration = sum(s.duration for s in sessions)
+    average_focus_time = total_duration / len(sessions) if sessions else 0
 
-    # For each session, convert its start_time to the user's timezone and add its duration.
+    # Build labels and durations for the chart
+    labels = [(start_of_week + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    durations_dict = {label: 0 for label in labels}
     for s in sessions:
-        utc_time = s.start_time
-        if utc_time.tzinfo is None:
-            utc_time = utc_time.replace(tzinfo=pytz.utc)
-        local_time = utc_time.astimezone(local_tz)
+        local_time = s.start_time.astimezone(local_tz)
         day_str = local_time.strftime("%Y-%m-%d")
         if day_str in durations_dict:
             durations_dict[day_str] += s.duration
-
-    # Build the durations list in the order of labels.
     durations = [durations_dict[label] for label in labels]
 
-    return jsonify({"labels": labels, "data": durations})
+    return jsonify({
+        "labels": labels,
+        "data": durations,
+        "average_focus_time": average_focus_time
+    })
 
 @auth.route("/change_timezone", methods=["POST"])
 @csrf_exempt  # Disable CSRF protection for this route
@@ -188,11 +164,16 @@ def change_timezone():
 @jwt_required()  # Requires a valid JWT token
 def dashboard():
     try:
-        user_id = get_jwt_identity()  # Get the user ID from the JWT token
+        # Get the user ID from the JWT token
+        user_id = get_jwt_identity()
         user = Users.query.get(user_id)
         print("DEBUG: User timezone is now:", user.timezone)
-        sessions = FocusSession.query.filter_by(user_id=user_id).all()
+
+        # Get the user's timezone or default to UTC
         user_timezone = user.timezone if user and user.timezone else "UTC"
+
+        # Fetch all focus sessions for the user
+        sessions = FocusSession.query.filter_by(user_id=user_id).all()
 
         # Convert session times to the user's timezone
         def convert_to_local_time(utc_time):
@@ -201,7 +182,9 @@ def dashboard():
             local_tz = pytz.timezone(user_timezone)
             return utc_time.astimezone(local_tz)
 
+        # Prepare session data for the template
         sessions_converted = []
+        total_duration = 0
         for s in sessions:
             local_time = convert_to_local_time(s.start_time)
             print(f"DEBUG: Session {s.id} UTC: {s.start_time}, Local: {local_time}")
@@ -211,9 +194,22 @@ def dashboard():
                 "end_time": convert_to_local_time(s.end_time).strftime("%Y-%m-%d %H:%M:%S") if s.end_time else "Ongoing",
                 "duration": s.duration
             })
+            total_duration += s.duration
 
-        return render_template("dashboard.html", sessions=sessions_converted, user=user, timezones=COMMON_TIMEZONES)
+        # Calculate the average focus time
+        average_focus_time = total_duration / len(sessions) if sessions else 0
+        print(f"DEBUG: Average focus time: {average_focus_time} seconds")
+
+        # Render the dashboard template
+        return render_template(
+            "dashboard.html",
+            sessions=sessions_converted,
+            user=user,
+            timezones=COMMON_TIMEZONES,
+            average_focus_time=average_focus_time
+        )
     except Exception as e:
+        # Handle errors and redirect to login
         print("DEBUG: Dashboard access failed =>", e)
         flash(f"Dashboard access failed: {str(e)}", "danger")
         return redirect(url_for("auth.login"))
