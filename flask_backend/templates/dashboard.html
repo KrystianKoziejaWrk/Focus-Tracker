@@ -3,36 +3,28 @@
 {% block content %}
 <div class="container-fluid">
   <div class="row">
+    <!-- Average Focus Time Card -->
     <div class="col-md-3">
-      <!-- Average Focus Time -->
       <div class="card mb-3">
         <div class="card-body text-center">
           <h5 class="card-title">Average Focus Time</h5>
-          <p class="card-text display-6">{{ average_focus_time // 60 }}h {{ average_focus_time % 60 }}m</p>
+          <p class="card-text display-6">
+            {{ average_focus_time // 60 }}h {{ average_focus_time % 60 }}m
+          </p>
         </div>
       </div>
     </div>
-    <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-      <h1 class="h2 mt-3">Dashboard</h1>
-      
-      <div class="d-flex justify-content-end mb-3">
-        <!-- Time Zone Change Form -->
-        <form id="timezone-form" method="POST" action="{{ url_for('auth.change_timezone') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <div class="input-group">
-            <label for="timezone" class="input-group-text">Time Zone</label>
-            <select class="form-select" id="timezone" name="timezone">
-              {% for tz in timezones %}
-              <option value="{{ tz }}" {% if tz == user.timezone %}selected{% endif %}>{{ tz }}</option>
-              {% endfor %}
-            </select>
-            <button type="submit" class="btn btn-primary">Change</button>
-          </div>
-        </form>
-      </div>
-      
-      <canvas class="my-4 w-100" id="focusChart" width="900" height="380"></canvas>
 
+    <!-- Graph -->
+    <div class="col-md-9">
+      <h1 class="h2 mt-3">Dashboard</h1>
+      <canvas class="my-4 w-100" id="focusChart" width="900" height="380"></canvas>
+    </div>
+  </div>
+
+  <!-- Session Data Table -->
+  <div class="row">
+    <div class="col-md-12">
       <h2>Session Data</h2>
       <div class="table-responsive small">
         <table class="table table-striped table-sm">
@@ -59,6 +51,7 @@
     </div>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

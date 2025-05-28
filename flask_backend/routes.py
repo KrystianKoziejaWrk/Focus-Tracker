@@ -171,34 +171,49 @@ def dashboard():
 
         # Get the user's timezone or default to UTC
         user_timezone = user.timezone if user and user.timezone else "UTC"
+        local_tz = pytz.timezone(user_timezone)
 
-        # Fetch all focus sessions for the user
-        sessions = FocusSession.query.filter_by(user_id=user_id).all()
+        # Calculate the start and end of the current week
+        now_local = datetime.now(local_tz)
+        adjusted_weekday = (now_local.weekday() + 1) % 7
+        start_of_week = now_local - timedelta(days=adjusted_weekday)
+        start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+        start_of_week_utc = start_of_week.astimezone(pytz.utc)
+        end_of_week_utc = end_of_week.astimezone(pytz.utc)
+
+        # Fetch all focus sessions for the user in the current week
+        sessions = FocusSession.query.filter(
+            FocusSession.user_id == user_id,
+            FocusSession.start_time >= start_of_week_utc,
+            FocusSession.start_time <= end_of_week_utc
+        ).all()
+
+        # Calculate total duration and average focus time
+        total_duration = sum(s.duration for s in sessions)
+        total_sessions = len(sessions)
+        average_focus_time = total_duration / total_sessions if total_sessions > 0 else 0
+        print(f"DEBUG: Total duration: {total_duration} seconds")
+        print(f"DEBUG: Total sessions: {total_sessions}")
+        print(f"DEBUG: Average focus time: {average_focus_time} seconds")
 
         # Convert session times to the user's timezone
         def convert_to_local_time(utc_time):
             if utc_time.tzinfo is None:
                 utc_time = utc_time.replace(tzinfo=timezone.utc)
-            local_tz = pytz.timezone(user_timezone)
             return utc_time.astimezone(local_tz)
 
         # Prepare session data for the template
         sessions_converted = []
-        total_duration = 0
         for s in sessions:
             local_time = convert_to_local_time(s.start_time)
-            print(f"DEBUG: Session {s.id} UTC: {s.start_time}, Local: {local_time}")
             sessions_converted.append({
                 "id": s.id,
                 "start_time": local_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": convert_to_local_time(s.end_time).strftime("%Y-%m-%d %H:%M:%S") if s.end_time else "Ongoing",
                 "duration": s.duration
             })
-            total_duration += s.duration
-
-        # Calculate the average focus time
-        average_focus_time = total_duration / len(sessions) if sessions else 0
-        print(f"DEBUG: Average focus time: {average_focus_time} seconds")
 
         # Render the dashboard template
         return render_template(
